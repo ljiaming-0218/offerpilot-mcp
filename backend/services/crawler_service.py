@@ -2,6 +2,7 @@ import time
 from urllib.parse import urlparse
 
 from backend.crawler.fetcher import fetch_public_page
+from backend.crawler.url_safety import UnsafeUrlError
 from backend.crawler.parsers.generic_parser import parse_job_page
 from backend.errors import AppError
 from backend.repositories import crawler_repository
@@ -50,6 +51,26 @@ def fetch_url_and_create_job(payload: FetchUrlRequest) -> dict:
             "parsed_job": created_job,
             "message": "岗位网页采集并入库成功",
         }
+
+    except UnsafeUrlError as exc:
+        crawler_repository.create_crawl_record(
+            task_id=task_id,
+            source_url=url,
+            status="failed",
+            error_message=str(exc),
+        )
+        crawler_repository.finish_crawl_task(
+            task_id=task_id,
+            status="failed",
+            error_message=str(exc),
+        )
+        raise AppError(
+            error="UNSAFE_CRAWL_URL",
+            message="岗位链接被安全策略拦截",
+            status_code=400,
+            reason=str(exc),
+            source_url=url,
+        ) from exc
 
     except AppError as exc:
         status = "skipped" if exc.error == "DUPLICATE_JOB" else "failed"
