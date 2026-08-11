@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OfferPilot MCP</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <section class="auth-shell" id="auth-view">
+    <div class="auth-card">
+      <div class="brand auth-brand">
+        <div class="brand-mark">OP</div>
+        <div>
+          <strong>OfferPilot</strong>
+          <span>AI 求职工作台登录</span>
+        </div>
+      </div>
+      <div class="auth-tabs">
+        <button class="auth-tab is-active" id="auth-login-tab" type="button">登录</button>
+        <button class="auth-tab" id="auth-register-tab" type="button">注册</button>
+      </div>
+      <form class="auth-form" id="auth-form">
+        <label class="field">
+          <span>用户名</span>
+          <input id="auth-username" autocomplete="username" required>
+        </label>
+        <label class="field">
+          <span>密码</span>
+          <input id="auth-password" type="password" autocomplete="current-password" required>
+        </label>
+        <label class="field" id="auth-display-name-field">
+          <span>显示名称</span>
+          <input id="auth-display-name" placeholder="注册时可选">
+        </label>
+        <button class="button button-primary" id="auth-submit" type="submit">登录</button>
+      </form>
+      <p class="auth-note" id="auth-note">第一位注册用户会自动成为管理员，后续注册用户为普通用户。</p>
+    </div>
+  </section>
+
+  <div class="app-shell is-hidden" id="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">OP</div>
+        <div>
+          <strong>OfferPilot</strong>
+          <span>MCP-powered AI 求职工作台</span>
+        </div>
+      </div>
+
+      <nav class="nav-list" aria-label="主导航">
+        <div class="nav-group-label">OfferPilot</div>
+        <button class="nav-item is-active" data-view="dashboard" type="button">概览</button>
+        <button class="nav-item" data-view="crawler" type="button">岗位采集</button>
+        <button class="nav-item" data-view="jobs" type="button">岗位库</button>
+        <button class="nav-item" data-view="match" type="button">匹配中心</button>
+        <button class="nav-item" data-view="interview" type="button">面试训练</button>
+        <button class="nav-item" data-view="profile" type="button">我的画像</button>
+        <div class="nav-group-label">开发者工具</div>
+        <button class="nav-item role-admin" data-view="agent" type="button">MCP Console</button>
+        <button class="nav-item role-admin" data-view="skills" type="button">运行记录</button>
+      </nav>
+
+      <div class="sidebar-panel">
+        <div class="panel-title">系统状态</div>
+        <div class="status-stack">
+          <div><span>服务</span><strong id="health-status">检测中</strong></div>
+          <div><span>数据库</span><strong id="db-status">检测中</strong></div>
+          <div><span>LLM</span><strong id="llm-status">检测中</strong></div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">AI 求职工作台 · 岗位分析 · 面试训练</p>
+          <h1 id="view-title">概览</h1>
+        </div>
+        <div class="topbar-actions">
+          <span class="user-badge" id="current-user">未登录</span>
+          <button class="button button-secondary" id="refresh-all" type="button">刷新数据</button>
+          <button class="button button-primary" data-view-jump="crawler" type="button">采集岗位</button>
+          <button class="button button-ghost" id="logout" type="button">退出</button>
+        </div>
+      </header>
+
+      <section class="view is-active" id="view-dashboard">
+        <div class="metric-grid">
+          <article class="metric-card">
+            <span>岗位总数</span>
+            <strong id="job-count">0</strong>
+            <small>当前岗位数据</small>
+          </article>
+          <article class="metric-card">
+            <span>公司总数</span>
+            <strong id="company-count">0</strong>
+            <small>当前公司数据</small>
+          </article>
+          <article class="metric-card">
+            <span>技能标签</span>
+            <strong id="skill-count">0</strong>
+            <small>当前技能数据</small>
+          </article>
+          <article class="metric-card">
+            <span>工具调用</span>
+            <strong id="tool-log-count">0</strong>
+            <small>最近调用记录</small>
+          </article>
+        </div>
+
+        <div class="dashboard-grid">
+          <section class="surface">
+            <div class="section-head">
+              <div>
+                <h2>求职分析流程</h2>
+                <p>从真实岗位采集到能力匹配、面试训练和回答复盘的完整闭环。</p>
+              </div>
+            </div>
+            <div class="flow-line">
+              <div><strong>1</strong><span>采集目标岗位</span></div>
+              <div><strong>2</strong><span>解析岗位要求</span></div>
+              <div><strong>3</strong><span>对比个人能力</span></div>
+              <div><strong>4</strong><span>生成面试追问</span></div>
+              <div><strong>5</strong><span>复盘回答表现</span></div>
+            </div>
+          </section>
+
+          <section class="surface">
+            <div class="section-head">
+              <div>
+                <h2>最近岗位</h2>
+                <p>展示当前数据库中的岗位记录。</p>
+              </div>
+              <button class="button button-ghost" data-view-jump="jobs" type="button">查看全部</button>
+            </div>
+            <div class="compact-list" id="recent-jobs"></div>
+          </section>
+
+          <section class="surface">
+            <div class="section-head">
+              <div>
+                <h2>最近 Agent 执行</h2>
+                <p>展示真实 agent_traces 和 tool_call_logs。</p>
+              </div>
+              <button class="button button-ghost" data-view-jump="agent" type="button">打开 Console</button>
+            </div>
+            <div class="compact-list" id="recent-agent"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-jobs">
+        <section class="surface">
+          <div class="section-head">
+            <div>
+              <h2>岗位库</h2>
+              <p><span id="jobs-total-text">0</span> 条岗位数据，可按关键词、城市、类型和公司筛选。</p>
+            </div>
+            <button class="button button-secondary" id="refresh-jobs" type="button">刷新岗位</button>
+          </div>
+
+          <div class="filters">
+            <label class="field">
+              <span>搜索</span>
+              <input id="job-search" placeholder="岗位、公司、描述关键词">
+            </label>
+            <label class="field">
+              <span>城市</span>
+              <select id="city-filter"></select>
+            </label>
+            <label class="field">
+              <span>岗位类型</span>
+              <select id="type-filter"></select>
+            </label>
+            <label class="field">
+              <span>公司</span>
+              <select id="company-filter"></select>
+            </label>
+          </div>
+
+          <div class="table-card">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>岗位名称</th>
+                  <th>公司</th>
+                  <th>城市</th>
+                  <th>岗位类型</th>
+                  <th>来源</th>
+                  <th>创建时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="job-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section class="view" id="view-crawler">
+        <div class="crawler-layout">
+          <section class="surface">
+            <div class="section-head">
+              <div>
+                <h2>网页采集</h2>
+                <p>仅采集无需登录、公开可访问的岗位详情页；不处理验证码、登录态和受限页面。</p>
+              </div>
+            </div>
+
+            <form class="crawler-form" id="crawler-form">
+              <label class="field field-wide">
+                <span>公开岗位 URL</span>
+                <input id="crawl-url" placeholder="请输入公开岗位详情页链接" required>
+              </label>
+              <label class="field">
+                <span>公司名称</span>
+                <input id="crawl-company" placeholder="可选">
+              </label>
+              <label class="field">
+                <span>城市</span>
+                <input id="crawl-city" placeholder="可选">
+              </label>
+              <label class="field">
+                <span>岗位类型</span>
+                <input id="crawl-type" placeholder="不填写则自动解析">
+              </label>
+              <div class="form-actions">
+                <button class="button button-primary" id="crawl-submit" type="submit">开始采集</button>
+              </div>
+            </form>
+
+            <details class="batch-crawler">
+              <summary>高级操作：批量采集公开 URL</summary>
+              <p class="muted">最多 50 条；后端逐条处理并设置请求间隔；仅支持无需登录、公开可访问的岗位详情页。</p>
+              <label class="field">
+                <span>批量岗位 URL</span>
+                <textarea id="batch-crawl-urls" rows="6" placeholder="每行粘贴一个公开岗位详情页链接"></textarea>
+              </label>
+              <div class="form-actions">
+                <button class="button button-secondary" id="batch-crawl-submit" type="button">批量采集</button>
+              </div>
+            </details>
+
+            <div class="request-state" id="crawl-state">
+              <strong>等待采集</strong>
+              <span>输入公开岗位详情页 URL 后开始请求后端。</span>
+            </div>
+          </section>
+
+          <section class="surface">
+            <div class="section-head">
+              <div>
+                <h2>最近采集结果</h2>
+                <p>成功后会写入 jobs，并可跳转查看岗位详情。</p>
+              </div>
+            </div>
+            <div id="crawl-result" class="result-box empty-box">暂无采集结果。</div>
+          </section>
+
+          <section class="surface">
+            <div class="section-head">
+              <div>
+                <h2>采集记录</h2>
+                <p>展示后端真实 crawl_records，包含状态、来源、解析摘要和关联岗位。</p>
+              </div>
+              <button class="button button-ghost" id="refresh-crawl-records" type="button">刷新</button>
+            </div>
+            <div class="crawl-record-list" id="crawl-records"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-skills">
+        <section class="surface">
+          <div class="section-head">
+            <div>
+                <h2>运行记录</h2>
+                <p>集中查看技能标签、批处理结果和后续开发者侧排查入口。</p>
+            </div>
+            <div class="topbar-actions">
+              <button class="button button-secondary" id="batch-extract" type="button">批量抽取技能</button>
+              <button class="button button-primary" id="batch-requirements" type="button">批量补全岗位要求</button>
+            </div>
+          </div>
+          <div class="skill-summary" id="skill-category-summary"></div>
+          <div class="skill-grid" id="skill-grid"></div>
+        </section>
+      </section>
+
+      <section class="view" id="view-agent">
+        <div class="agent-layout">
+          <section class="surface">
+            <div class="section-head">
+              <div>
+                <h2>MCP Console</h2>
+                <p>面向开发和面试演示，观察工具调用、Text2SQL、结构化结果与 Trace。</p>
+              </div>
+            </div>
+            <label class="field">
+              <span>任务输入</span>
+              <textarea id="task-input" rows="4" placeholder="请输入要执行的岗位查询、岗位分析或采集任务"></textarea>
+            </label>
+            <div class="quick-actions">
+              <button class="button button-primary" id="run-agent" type="button">运行 Agent</button>
+            </div>
+            <div class="answer-panel">
+              <div class="section-head compact">
+                <h3>最终回答</h3>
+                <span id="trace-id" class="muted">trace_id --</span>
+              </div>
+              <p id="final-answer">等待 Agent 运行。</p>
+            </div>
+          </section>
+
+          <section class="surface">
+            <div class="section-head compact">
+              <h2>Generated SQL</h2>
+              <span class="status-pill neutral">SQL Guard</span>
+            </div>
+            <pre id="sql-output">-- waiting</pre>
+            <div class="section-head compact result-heading">
+              <h2>结构化结果</h2>
+              <span id="rows-summary" class="muted">暂无结果</span>
+            </div>
+            <div id="structured-result"></div>
+            <div class="table-card is-hidden" id="result-table-card">
+              <table class="data-table">
+                <thead id="result-head"></thead>
+                <tbody id="result-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <div class="agent-record-grid">
+          <section class="surface">
+            <div class="section-head compact">
+              <h2>当前 Trace</h2>
+              <span class="status-pill neutral">live</span>
+            </div>
+            <div class="timeline" id="trace-list"></div>
+          </section>
+          <section class="surface">
+            <div class="section-head compact">
+              <h2>工具调用日志</h2>
+              <button class="button button-ghost" id="refresh-logs" type="button">刷新</button>
+            </div>
+            <div class="compact-list" id="log-list"></div>
+          </section>
+          <section class="surface">
+            <div class="section-head compact">
+              <h2>Trace 历史</h2>
+              <button class="button button-ghost" id="refresh-traces" type="button">刷新</button>
+            </div>
+            <div class="compact-list" id="history-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-profile">
+        <div class="profile-layout">
+          <section class="surface">
+            <div class="section-head">
+              <div>
+                <h2>我的画像</h2>
+                <p>上传 PDF 或 Word 简历自动提取画像草稿，也可以手动补充和修改。</p>
+              </div>
+              <button class="button button-secondary" id="load-profile" type="button">读取画像</button>
+            </div>
+
+            <div class="resume-upload">
+              <div>
+                <strong>从简历生成画像草稿</strong>
+                <p class="muted">仅读取文本并填充表单，不保存原始简历文件。支持 PDF / DOCX，建议上传文本型简历。</p>
+              </div>
+              <div class="resume-upload-actions">
+                <input id="resume-file" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+                <button class="button button-secondary" id="parse-resume" type="button">解析简历</button>
+              </div>
+            </div>
+
+            <form class="profile-form" id="profile-form">
+              <label class="field">
+                <span>本地画像 ID</span>
+                <input id="profile-user-id" placeholder="例如 your-name 或 offerpilot-user" required>
+              </label>
+              <label class="field">
+                <span>姓名</span>
+                <input id="profile-name" placeholder="请输入姓名或展示名称">
+              </label>
+              <label class="field">
+                <span>学历背景</span>
+                <input id="profile-education" placeholder="请输入学历背景">
+              </label>
+              <label class="field">
+                <span>目标岗位</span>
+                <input id="profile-target-roles" placeholder="多个目标岗位请用逗号分隔">
+              </label>
+              <label class="field">
+                <span>目标城市</span>
+                <input id="profile-target-cities" placeholder="多个目标城市请用逗号分隔">
+              </label>
+              <label class="field">
+                <span>工作类型</span>
+                <input id="profile-work-type" placeholder="请输入期望工作类型">
+              </label>
+              <label class="field field-wide">
+                <span>已掌握技能</span>
+                <textarea id="profile-skills" rows="4" placeholder="请输入已掌握技能，支持逗号或换行分隔"></textarea>
+              </label>
+              <label class="field field-wide">
+                <span>项目经历</span>
+                <textarea id="profile-projects" rows="4" placeholder="请输入真实项目经历，每行一条"></textarea>
+              </label>
+              <label class="field field-wide">
+                <span>当前短板</span>
+                <textarea id="profile-weaknesses" rows="3" placeholder="请输入当前需要补强的方向，支持逗号或换行分隔"></textarea>
+              </label>
+              <div class="form-actions">
+                <button class="button button-primary" id="save-profile" type="submit">保存画像</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="surface">
+            <div class="section-head">
+              <div>
+                <h2>画像预览</h2>
+                <p>这里展示数据库中保存的当前用户画像。</p>
+              </div>
+            </div>
+            <div id="profile-preview" class="result-box empty-box">尚未读取用户画像。</div>
+          </section>
+
+          <section class="surface">
+            <div class="section-head">
+              <div>
+                <h2>画像列表</h2>
+                <p>普通用户查看自己创建的画像，管理员查看所有用户绑定的画像。</p>
+              </div>
+              <button class="button button-ghost" id="refresh-profiles" type="button">刷新</button>
+            </div>
+            <div class="compact-list profile-list" id="profile-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-match">
+        <section class="surface">
+          <div class="section-head">
+            <div>
+              <h2>匹配分析</h2>
+              <p>基于用户画像技能和岗位技能标签计算覆盖率，结果全部来自当前数据库。</p>
+            </div>
+            <div class="topbar-actions">
+              <input id="match-user-id" class="inline-input" placeholder="画像 ID" aria-label="画像 ID">
+              <button class="button button-primary" id="run-match" type="button">开始匹配</button>
+            </div>
+          </div>
+          <div class="match-summary" id="match-summary"></div>
+          <div class="match-list" id="match-list">
+            <div class="empty">请先保存用户画像，再执行匹配分析。</div>
+          </div>
+        </section>
+      </section>
+
+      <section class="view" id="view-interview">
+        <section class="surface">
+          <div class="section-head">
+            <div>
+              <h2>面试训练</h2>
+              <p>基于真实岗位 JD、结构化岗位要求和用户画像生成 3 道可解释追问。</p>
+            </div>
+            <div class="topbar-actions">
+              <input id="interview-user-id" class="inline-input" placeholder="画像 ID" aria-label="画像 ID">
+              <select id="interview-job-id" class="inline-input" aria-label="选择岗位">
+                <option value="">选择岗位</option>
+              </select>
+              <select id="interview-difficulty" class="inline-input" aria-label="面试难度">
+                <option value="medium">medium</option>
+                <option value="easy">easy</option>
+                <option value="hard">hard</option>
+              </select>
+              <button class="button button-primary" id="run-interview" type="button">生成面试题</button>
+            </div>
+          </div>
+          <div class="result-box" id="interview-result">
+            <div class="empty">请先保存用户画像，并在岗位管理中确认目标岗位 ID。</div>
+          </div>
+
+          <div class="evaluation-panel">
+            <div class="section-head compact">
+              <h2>回答评分</h2>
+              <span class="status-pill neutral">answer evaluation</span>
+            </div>
+            <div class="evaluation-form">
+              <label class="field">
+                <span>面试会话 ID</span>
+                <input id="evaluation-session-id" type="number" min="1" placeholder="生成面试题后自动填入">
+              </label>
+              <label class="field field-wide">
+                <span>面试问题</span>
+                <textarea id="evaluation-question" rows="3" placeholder="可点击上方面试题的“用于评分”自动填入"></textarea>
+              </label>
+              <label class="field field-wide">
+                <span>你的回答</span>
+                <textarea id="evaluation-answer" rows="6" placeholder="输入你的真实回答，至少 10 个字"></textarea>
+              </label>
+              <div class="form-actions">
+                <button class="button button-primary" id="run-evaluation" type="button">评分回答</button>
+              </div>
+            </div>
+            <div class="result-box" id="evaluation-result">
+              <div class="empty">等待提交回答。</div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <aside class="drawer" id="job-drawer" aria-hidden="true">
+      <div class="drawer-head">
+        <div>
+          <span class="muted">岗位详情</span>
+          <h2 id="drawer-title">未选择岗位</h2>
+        </div>
+        <button class="icon-button" id="drawer-close" type="button" aria-label="关闭详情">×</button>
+      </div>
+      <div class="drawer-body" id="drawer-body"></div>
+    </aside>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>

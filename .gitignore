@@ -1,0 +1,8 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+*.log
+.pytest_cache/
+frontend_screenshot*.png
+offerpilot_mcp.sql
