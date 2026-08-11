@@ -93,7 +93,7 @@ select:disabled {
   margin-bottom: 20px;
 }
 
-.auth-brand strong {
+.brand.auth-brand strong {
   color: #000000;
   font-family: SimHei, "Microsoft YaHei", var(--font);
   font-weight: 900;
