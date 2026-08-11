@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from backend.errors import AppError
 from backend.config import settings
 from backend.database import init_db, iter_table_names, verify_database
+from backend.mcp_server import mcp_http_app, offerpilot_mcp
 
 from backend.routers.job_router import router as job_router
 from backend.routers.skill_router import router as skill_router
@@ -21,11 +22,13 @@ from backend.routers.auth_router import router as auth_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    yield
+    async with offerpilot_mcp.session_manager.run():
+        yield
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 app.include_router(auth_router)
+app.mount("/mcp", mcp_http_app, name="mcp")
 app.include_router(job_router)
 app.include_router(skill_router)
 app.include_router(crawler_router)

@@ -14,7 +14,7 @@ OfferPilot MCP 是一个面向 AI、软件开发和技术岗位求职者的智�
 - 面向用户：采集真实岗位、抽取岗位要求、建立简历画像、分析岗位匹配、生成模拟面试问题。
 - 面向开发者与面试展示：展示 Tool Registry、Text2SQL、SQL Guard、Agent Trace 和工具调用日志。
 
-> 说明：当前项目实现的是参考 MCP 思想的 Tool Registry + Agent Workflow + Trace 结构，不宣称已经完整实现官方 MCP 协议 Endpoint。如果后续接入官方 MCP SDK 或 Streamable HTTP Endpoint，可以再把项目描述升级为完整 MCP Server。
+> 说明：当前项目已使用官方 MCP Python SDK 提供 Streamable HTTP Endpoint，并开放第一批只读岗位工具。现阶段仍是最小 MCP Server，尚未开放写操作工具、MCP 鉴权、Resources 和 Prompts。
 
 ## 当前功能
 
@@ -70,6 +70,12 @@ OfferPilot MCP 是一个面向 AI、软件开发和技术岗位求职者的智�
   - `crawl_job_url`
   - `extract_skills`
 - 支持 Agent Trace 和 Tool Call Log，便于调试和面试展示。
+- 支持官方 MCP Streamable HTTP Endpoint：`/mcp/`。
+- 当前通过 MCP 暴露3个只读工具：
+  - `search_jobs`
+  - `list_skills`
+  - `text2sql_query`
+- 爬虫、画像和面试等涉及写入或用户数据的能力暂不通过 MCP 对外开放。
 
 ### 模拟面试
 
@@ -87,6 +93,7 @@ OfferPilot MCP 是一个面向 AI、软件开发和技术岗位求职者的智�
 - PyMySQL
 - Pydantic
 - OpenAI-Compatible LLM API / OpenRouter
+- MCP Python SDK 2.0
 - BeautifulSoup / Requests
 - PDF / DOCX 文本解析依赖
 
@@ -112,6 +119,7 @@ offerpilot-mcp/
 │   ├── schemas/            # Pydantic 请求/响应模型
 │   ├── services/           # 业务逻辑
 │   ├── tools/              # Tool Registry 和工具执行
+│   ├── mcp_server.py       # 官方 MCP Server 与现有工具的适配层
 │   ├── config.py           # 环境变量配置
 │   └── main.py             # FastAPI 应用入口
 ├── frontend/
@@ -219,6 +227,10 @@ POST /agent/route
 POST /agent/run
 GET  /agent/traces
 
+POST /mcp/
+GET  /mcp/
+DELETE /mcp/
+
 POST /profile
 POST /profile/parse-resume
 GET  /profile/{user_id}
@@ -255,6 +267,18 @@ node --check frontend\app.js
 9. `POST /agent/run`
 10. `GET /agent/traces`
 
+MCP Inspector 验证：
+
+```bat
+mcp dev backend\mcp_server.py:offerpilot_mcp
+```
+
+在 Inspector 中依次检查 `search_jobs`、`list_skills` 和 `text2sql_query`。通过 FastAPI 联调时，Streamable HTTP 地址为：
+
+```text
+http://127.0.0.1:8000/mcp/
+```
+
 ## 当前项目边界
 
 当前已经能作为本地作品集演示版本使用，但还不等于生产级系统。
@@ -273,9 +297,9 @@ node --check frontend\app.js
 仍需完善：
 
 - 自动化测试覆盖不足。
-- 采集任务表和原始采集记录表尚未独立建模。
-- 还没有完整官方 MCP 协议 Endpoint。
-- 暂未实现登录、权限、审计和多用户隔离。
+- MCP 当前只暴露只读岗位工具，尚未实现远程 MCP 鉴权、Resources 和 Prompts。
+- 登录和画像所有权已实现，但岗位写入、采集、Agent、工具日志等接口的权限控制仍需补齐。
+- Skill Loader 已能发现本地 Skill，但 Skill 内容尚未真正驱动通用执行器。
 - 部署环境尚未做生产级安全加固。
 - Eval 结果需要整理为可展示报告。
 
@@ -361,12 +385,12 @@ LLM_MODEL 或 OPENROUTER_MODEL
 
 更稳妥的说法是：
 
-> 当前版本实现了 MCP 思想中的工具注册、工具调用、输入输出结构化和 Trace 观测；如果后续要接入 Claude、ChatGPT 或 MCP Inspector，我会再补官方协议 Endpoint。
+> 当前版本使用官方 MCP Python SDK，通过 Streamable HTTP 暴露3个只读岗位工具，并复用现有 Tool Registry、SQL Guard 和工具日志。写操作工具、远程鉴权、Resources 与 Prompts 仍在后续范围内。
 
 ## 下一步优先级
 
 1. 补充自动化测试，至少覆盖健康检查、岗位采集、技能抽取、Text2SQL Guard、简历解析和匹配分析。
-2. 为采集增加独立的 `crawl_tasks` 和 `crawl_records`，保存采集状态、URL、错误原因和原始文本摘要。
-3. 整理 `eval/`，形成可复现的项目评估报告。
-4. 决定是否接入官方 MCP SDK。
-5. 准备部署环境和演示数据。
+2. 为公开写接口和远程 MCP 补充权限控制、限流与审计。
+3. 增加爬虫 SSRF 防护和响应体限制。
+4. 让 Skill 定义真正约束允许工具、执行步骤和质量检查。
+5. 整理 `eval/`，形成可复现的项目评估报告。

@@ -31,6 +31,9 @@ class Settings(BaseSettings):
 
     auth_secret_key: str = "offerpilot-local-dev-secret"
 
+    mcp_allowed_hosts: str = ""
+    mcp_allowed_origins: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -58,6 +61,18 @@ class Settings(BaseSettings):
     @property
     def llm_configured(self) -> bool:
         return bool(self.llm_api_key or self.openrouter_api_key)
+
+    @property
+    def mcp_allowed_host_list(self) -> list[str]:
+        return _split_csv(self.mcp_allowed_hosts)
+
+    @property
+    def mcp_allowed_origin_list(self) -> list[str]:
+        return _split_csv(self.mcp_allowed_origins)
+
+
+def _split_csv(value: str) -> list[str]:
+    return [item.strip() for item in value.split(",") if item.strip()]
 
 
 settings = Settings()
