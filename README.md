@@ -1,3 +1,10 @@
+---
+title: OfferPilot MCP
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # OfferPilot MCP
 
 OfferPilot MCP 是一个面向 AI、软件开发和技术岗位求职者的智能岗位管理与分析工作台。
@@ -88,7 +95,7 @@ OfferPilot MCP 是一个面向 AI、软件开发和技术岗位求职者的智�
 - 原生 HTML
 - CSS
 - JavaScript
-- 后端通过 FastAPI StaticFiles 提供 `/app/` 页面
+- 后端通过 FastAPI StaticFiles 在根路径 `/` 提供前端页面
 
 当前没有使用 React、Vue 或 Next.js。
 
@@ -181,7 +188,7 @@ uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
 ```text
 健康检查：http://127.0.0.1:8000/health
 接口文档：http://127.0.0.1:8000/docs
-前端页面：http://127.0.0.1:8000/app/
+前端页面：http://127.0.0.1:8000/
 ```
 
 ## 常用接口
@@ -298,7 +305,7 @@ uvicorn backend.main:app --host 0.0.0.0 --port 8000
 
 9. 使用 Nginx 反向代理到 8000 端口。
 10. 配置 HTTPS。
-11. 访问 `/health`、`/docs`、`/app/` 做冒烟测试。
+11. 访问 `/health`、`/docs`、`/` 做冒烟测试。
 
 ### 推荐方案二：PaaS 部署
 

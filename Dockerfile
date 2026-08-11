@@ -7,7 +7,7 @@ ENV PORT=7860
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc default-libmysqlclient-dev pkg-config \
+    && apt-get install -y --no-install-recommends ca-certificates gcc default-libmysqlclient-dev pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

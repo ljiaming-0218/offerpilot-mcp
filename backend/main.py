@@ -36,7 +36,7 @@ app.include_router(profile_router)
 app.include_router(interview_router)
 
 FRONTEND_DIR = Path(__file__).resolve().parents[1] / "frontend"
-app.mount("/app", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+
 
 @app.get("/health")
 def health_check() -> dict:
@@ -60,3 +60,6 @@ def handle_app_error(request, exc):
             **exc.details,
         },
     )
+
+
+app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")

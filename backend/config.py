@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     mysql_password: str = ""
     mysql_database: str = "offerpilot_mcp"
     mysql_charset: str = "utf8mb4"
+    mysql_ssl_enabled: bool = False
+    mysql_ssl_ca: str | None = None
 
     llm_api_key: str | None = None
     llm_base_url: str | None = None
