@@ -1,4 +1,4 @@
-from fastapi import Header
+from fastapi import Depends, Header
 
 from backend.errors import AppError
 from backend.services import auth_service
@@ -21,3 +21,8 @@ def ensure_admin(current_user: dict) -> None:
             message="该操作仅管理员可用",
             status_code=403,
         )
+
+
+def get_admin_user(current_user: dict = Depends(get_current_user)) -> dict:
+    ensure_admin(current_user)
+    return current_user

@@ -24,7 +24,10 @@ def list_user_profiles(current_user: dict = Depends(get_current_user)) -> list[d
 
 
 @router.post("/parse-resume", response_model=ResumeParseResult)
-async def parse_resume(file: UploadFile = File(...)) -> dict:
+async def parse_resume(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+) -> dict:
     content = await file.read()
     return resume_parse_service.parse_resume(file.filename or "resume", content)
 

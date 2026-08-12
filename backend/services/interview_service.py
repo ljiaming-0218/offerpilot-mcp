@@ -1,18 +1,13 @@
 from backend.errors import AppError
-from backend.repositories import interview_repository, job_repository, user_profile_repository
+from backend.repositories import interview_repository, job_repository
 from backend.schemas.interview_schema import AnswerEvaluationRequest, MockInterviewRequest
+from backend.services import profile_match_service
 from backend.services.interview_llm_service import generate_interview_questions_by_llm
 from backend.services.interview_signal_service import build_interview_questions
 
 
-def generate_mock_interview(payload: MockInterviewRequest) -> dict:
-    profile = user_profile_repository.get_user_profile(payload.user_id)
-    if profile is None:
-        raise AppError(
-            error="USER_PROFILE_NOT_FOUND",
-            message="用户画像不存在，请先保存用户画像",
-            status_code=404,
-        )
+def generate_mock_interview(payload: MockInterviewRequest, current_user: dict) -> dict:
+    profile = profile_match_service.get_user_profile(payload.user_id, current_user=current_user)
 
     job = job_repository.get_job_by_id(payload.job_id)
     if job is None:
@@ -71,7 +66,7 @@ def _generate_questions(
         )
 
 
-def evaluate_answer(payload: AnswerEvaluationRequest) -> dict:
+def evaluate_answer(payload: AnswerEvaluationRequest, current_user: dict) -> dict:
     session = interview_repository.get_interview_session(payload.session_id)
     if session is None:
         raise AppError(
@@ -79,6 +74,8 @@ def evaluate_answer(payload: AnswerEvaluationRequest) -> dict:
             message="面试会话不存在，请先生成模拟面试题",
             status_code=404,
         )
+
+    profile_match_service.get_user_profile(session["user_id"], current_user=current_user)
 
     session_questions = [item.get("question", "") for item in session.get("questions", [])]
     if payload.question not in session_questions:
