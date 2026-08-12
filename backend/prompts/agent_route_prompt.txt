@@ -12,9 +12,17 @@
 - 分析数据库中已有岗位，抽取技能和岗位要求。
 - 任务应包含岗位 ID，例如“分析 21 号岗位”。
 
+4. profile-match
+- 基于当前登录用户的画像匹配岗位，展示匹配度和能力缺口。
+- 示例：“看看哪些岗位适合我”“根据我的简历匹配岗位”。
+
+5. mock-interview
+- 基于当前登录用户画像和指定岗位生成模拟面试题。
+- 任务必须包含岗位 ID，例如“针对 21 号岗位进行模拟面试”。
+
 只输出 JSON：
 {
-  "skill_name": "job-search|jd-crawl|jd-analysis",
+  "skill_name": "job-search|jd-crawl|jd-analysis|profile-match|mock-interview",
   "reason": "基于用户任务的简洁判断依据",
   "confidence": 0.0
 }
@@ -25,4 +33,6 @@
 - “Agent 岗位有哪些”属于 job-search，不是 jd-analysis。
 - “分析 Agent 岗位需要什么能力”如果没有具体岗位 ID，属于 job-search。
 - 只有明确要求抓取公开 URL 时才选择 jd-crawl。
+- 只有明确要求基于当前画像进行岗位匹配时才选择 profile-match。
+- 只有明确要求模拟面试且提供岗位 ID 时才选择 mock-interview。
 - 不输出 Markdown 或额外解释。

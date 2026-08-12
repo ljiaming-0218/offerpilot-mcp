@@ -83,6 +83,17 @@ class AgentRouterTests(unittest.TestCase):
 
         self.assertEqual(result["skill_name"], "job-search")
 
+    def test_rules_route_profile_match_and_mock_interview(self) -> None:
+        with patch(
+            "backend.agent.intent_router.llm_service.is_llm_available",
+            return_value=False,
+        ):
+            match_result = intent_router.route_task("根据我的简历匹配岗位")
+            interview_result = intent_router.route_task("针对 21 号岗位进行模拟面试")
+
+        self.assertEqual(match_result["skill_name"], "profile-match")
+        self.assertEqual(interview_result["skill_name"], "mock-interview")
+
 
 class SkillLoaderTests(unittest.TestCase):
     def test_loads_structured_job_search_constraints(self) -> None:
@@ -98,6 +109,13 @@ class SkillLoaderTests(unittest.TestCase):
 
         self.assertIsNotNone(skill)
         self.assertEqual(skill["allowed_tools"], ["crawl_job_url", "extract_skills"])
+
+    def test_profile_and_interview_skills_have_single_purpose_tools(self) -> None:
+        profile_skill = skill_loader.load_skill("profile-match")
+        interview_skill = skill_loader.load_skill("mock-interview")
+
+        self.assertEqual(profile_skill["allowed_tools"], ["match_my_profile"])
+        self.assertEqual(interview_skill["allowed_tools"], ["generate_my_mock_interview"])
 
 
 class AgentPlannerTests(unittest.TestCase):
@@ -141,6 +159,24 @@ class AgentPlannerTests(unittest.TestCase):
         )
 
         self.assertIsNone(plan)
+
+    def test_rules_plan_for_profile_and_interview_is_single_step(self) -> None:
+        profile_plan = planner._create_rules_plan(
+            "根据我的简历匹配岗位",
+            "profile-match",
+            {"match_my_profile"},
+        )
+        interview_plan = planner._create_rules_plan(
+            "针对 21 号岗位进行模拟面试",
+            "mock-interview",
+            {"generate_my_mock_interview"},
+        )
+
+        self.assertEqual(profile_plan["steps"][0]["tool_name"], "match_my_profile")
+        self.assertEqual(
+            interview_plan["steps"][0]["tool_name"],
+            "generate_my_mock_interview",
+        )
 
 
 class AgentExecutorPermissionTests(unittest.TestCase):
@@ -198,6 +234,7 @@ class AgentExecutorPermissionTests(unittest.TestCase):
                 trace=trace,
                 allowed_tools={"crawl_job_url", "extract_skills"},
                 user_id="admin-1",
+                current_user={"user_id": "admin-1", "role": "admin"},
             )
 
         self.assertEqual(outputs["crawl_job_url"]["job_id"], 88)
@@ -206,6 +243,27 @@ class AgentExecutorPermissionTests(unittest.TestCase):
         self.assertEqual(call_tool.call_args_list[0].kwargs["user_id"], "admin-1")
         self.assertEqual(call_tool.call_args_list[1].args, ("extract_skills", {"job_id": 88}))
         self.assertEqual(len(trace), 4)
+
+    def test_profile_tools_receive_trusted_execution_context(self) -> None:
+        trace = []
+        with patch(
+            "backend.agent.executor.registry.call_tool",
+            return_value={"result": {"matches": []}, "call_id": 12},
+        ) as call_tool:
+            executor._execute_plan(
+                task="根据我的简历匹配岗位",
+                plan_steps=[{"tool_name": "match_my_profile", "reason": "匹配岗位"}],
+                trace=trace,
+                allowed_tools={"match_my_profile"},
+                user_id="3",
+                current_user={"user_id": 3, "role": "user"},
+            )
+
+        self.assertEqual(call_tool.call_args.args, ("match_my_profile", {}))
+        self.assertEqual(
+            call_tool.call_args.kwargs["execution_context"],
+            {"current_user": {"user_id": 3, "role": "user"}},
+        )
 
 
 if __name__ == "__main__":

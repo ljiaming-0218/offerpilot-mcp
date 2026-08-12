@@ -9,7 +9,13 @@ from backend.services import llm_service
 
 
 PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "agent_route_prompt.txt"
-ALLOWED_SKILLS = {"job-search", "jd-crawl", "jd-analysis"}
+ALLOWED_SKILLS = {
+    "job-search",
+    "jd-crawl",
+    "jd-analysis",
+    "profile-match",
+    "mock-interview",
+}
 MIN_ROUTE_CONFIDENCE = 0.55
 logger = logging.getLogger("offerpilot.agent.router")
 
@@ -61,6 +67,9 @@ def _normalize_llm_route(task: str, result: dict) -> dict | None:
     if skill_name == "jd-analysis" and _extract_job_id(task) is None:
         return None
 
+    if skill_name == "mock-interview" and _extract_job_id(task) is None:
+        return None
+
     return {
         "task": task,
         "skill_name": skill_name,
@@ -81,6 +90,18 @@ def _route_task_by_rules(task: str) -> dict:
         ["分析", "jd分析", "jd 分析", "提取技能", "技能标签", "岗位要求"],
     ):
         return _rule_result(task, "jd-analysis", "任务包含岗位 ID 和岗位分析意图")
+
+    if _extract_job_id(task) and _contains_any(
+        normalized_task,
+        ["模拟面试", "面试题", "面试训练", "面试准备"],
+    ):
+        return _rule_result(task, "mock-interview", "任务包含岗位 ID 和模拟面试意图")
+
+    if _contains_any(
+        normalized_task,
+        ["我的匹配", "岗位匹配", "匹配岗位", "适合我的岗位", "匹配度"],
+    ):
+        return _rule_result(task, "profile-match", "任务表达了基于当前画像的岗位匹配意图")
 
     return _rule_result(task, "job-search", "规则兜底将任务作为已有岗位数据查询处理")
 

@@ -68,10 +68,12 @@ OfferPilot MCP 是一个面向 AI、软件开发和技术岗位求职者的智�
 ### Agent 与工具调用
 
 - Agent Router 优先使用 LLM 理解自然语言任务，并只允许路由到已注册 Skill；模型不可用、结果非法、置信度低或缺少必要参数时使用规则兜底。
-- 当前支持3个可执行 Skill：
+- 当前支持5个可执行 Skill：
   - `job-search`
   - `jd-crawl`
   - `jd-analysis`
+  - `profile-match`
+  - `mock-interview`
 - `.skills/*/SKILL.md` 会被解析为结构化执行约束，包括触发关键词、执行步骤、允许工具、质量检查和失败处理。
 - Executor 在每次工具调用前检查当前 Skill 的工具白名单，禁止跨 Skill 调用未授权工具。
 - 支持 Tool Registry：
@@ -80,6 +82,8 @@ OfferPilot MCP 是一个面向 AI、软件开发和技术岗位求职者的智�
   - `text2sql_query`
   - `crawl_job_url`
   - `extract_skills`
+  - `match_my_profile`
+  - `generate_my_mock_interview`
 - Agent Trace 会记录路由方式、置信度、Skill 执行步骤、工具白名单、输入输出和调用编号；Tool Call Log 记录真实工具执行结果。
 - Agent Planner 会在白名单范围内生成最多3步的最小计划。当前支持“采集公开 URL 后，按用户明确要求继续抽取该岗位技能”的真实两步链路；后续步骤只读取前一步真实输出中的 `job_id`。
 - 支持官方 MCP Streamable HTTP Endpoint：`/mcp/`。
@@ -88,6 +92,7 @@ OfferPilot MCP 是一个面向 AI、软件开发和技术岗位求职者的智�
   - `list_skills`
   - `text2sql_query`
 - 爬虫、画像和面试等涉及写入或用户数据的能力暂不通过 MCP 对外开放。
+- `/agent/run` 面向已登录用户开放；画像匹配与模拟面试工具只从服务端认证上下文取得当前用户可访问的画像，任务文本不能指定其他用户画像。
 
 ### 模拟面试
 

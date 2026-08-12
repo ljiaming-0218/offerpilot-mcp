@@ -92,6 +92,10 @@ def _create_rules_plan(task: str, skill_name: str, allowed_tools: set[str]) -> d
         steps = [_step("crawl_job_url", "采集公开岗位页面并保存岗位")]
         if _requires_analysis(task):
             steps.append(_step("extract_skills", "使用采集结果中的岗位 ID 提取岗位要求"))
+    elif skill_name == "profile-match":
+        steps = [_step("match_my_profile", "使用当前登录用户画像匹配真实岗位")]
+    elif skill_name == "mock-interview":
+        steps = [_step("generate_my_mock_interview", "基于当前画像和指定岗位生成面试题")]
     else:
         raise AppError(
             error="SKILL_NOT_SUPPORTED",
@@ -129,6 +133,10 @@ def _is_valid_plan_shape(task: str, skill_name: str, steps: list[dict]) -> bool:
         if _requires_analysis(task):
             expected.append("extract_skills")
         return tool_names == expected
+    if skill_name == "profile-match":
+        return tool_names == ["match_my_profile"]
+    if skill_name == "mock-interview":
+        return tool_names == ["generate_my_mock_interview"]
     return False
 
 

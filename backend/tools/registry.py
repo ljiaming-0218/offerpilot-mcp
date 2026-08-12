@@ -7,6 +7,7 @@ from backend.repositories import tool_log_repository
 from backend.tools.base import ToolDefinition
 from backend.tools.crawler_tools import crawl_job_url
 from backend.tools.job_tools import extract_skills, search_jobs
+from backend.tools.profile_tools import generate_my_mock_interview, match_my_profile
 from backend.tools.skill_tools import list_skills
 from backend.tools.text2sql_tools import text2sql_query
 
@@ -47,6 +48,20 @@ TOOLS = {
         enabled=True,
         callable_function=extract_skills,
     ),
+    "match_my_profile": ToolDefinition(
+        tool_name="match_my_profile",
+        description="使用当前登录用户最近更新的画像匹配真实岗位",
+        risk_level="medium",
+        enabled=True,
+        callable_function=match_my_profile,
+    ),
+    "generate_my_mock_interview": ToolDefinition(
+        tool_name="generate_my_mock_interview",
+        description="基于当前登录用户画像和指定岗位生成模拟面试题",
+        risk_level="medium",
+        enabled=True,
+        callable_function=generate_my_mock_interview,
+    ),
 }
 
 
@@ -62,7 +77,12 @@ def list_tools() -> list[dict]:
     ]
 
 
-def call_tool(tool_name: str, input_data: dict, user_id: str | None = None) -> dict:
+def call_tool(
+    tool_name: str,
+    input_data: dict,
+    user_id: str | None = None,
+    execution_context: dict | None = None,
+) -> dict:
     started_at = time.perf_counter()
     tool = TOOLS.get(tool_name)
 
@@ -80,13 +100,22 @@ def call_tool(tool_name: str, input_data: dict, user_id: str | None = None) -> d
             status_code=403,
         )
 
+    sanitized_input = {
+        key: value
+        for key, value in input_data.items()
+        if key != "_execution_context"
+    }
+    execution_input = dict(sanitized_input)
+    if execution_context:
+        execution_input["_execution_context"] = execution_context
+
     try:
-        result = tool.callable_function(input_data)
+        result = tool.callable_function(execution_input)
         latency_ms = int((time.perf_counter() - started_at) * 1000)
 
         call_id = tool_log_repository.create_tool_call_log(
             tool_name=tool_name,
-            input_data=input_data,
+            input_data=sanitized_input,
             output_data=result,
             status="success",
             error_message=None,
@@ -108,7 +137,7 @@ def call_tool(tool_name: str, input_data: dict, user_id: str | None = None) -> d
 
         call_id = tool_log_repository.create_tool_call_log(
             tool_name=tool_name,
-            input_data=input_data,
+            input_data=sanitized_input,
             output_data=None,
             status="failed",
             error_message=exc.message,
