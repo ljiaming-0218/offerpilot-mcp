@@ -14,7 +14,7 @@ OfferPilot MCP 是一个面向 AI、软件开发和技术岗位求职者的智�
 - 面向用户：采集真实岗位、抽取岗位要求、建立简历画像、分析岗位匹配、生成模拟面试问题。
 - 面向开发者与面试展示：展示 Tool Registry、Text2SQL、SQL Guard、Agent Trace 和工具调用日志。
 
-> 说明：当前项目已使用官方 MCP Python SDK 提供 Streamable HTTP Endpoint，并开放第一批只读岗位工具。现阶段仍是最小 MCP Server，尚未开放写操作工具、MCP 鉴权、Resources 和 Prompts。
+> 说明：当前项目已使用官方 MCP Python SDK 提供 Streamable HTTP Endpoint，并开放第一批只读岗位工具。远程 Endpoint 使用静态 Bearer Token、基础限流和调用审计；这适合当前单用户演示部署，但不等同于完整 OAuth 2.1 授权服务器。
 
 ## 当前功能
 
@@ -36,9 +36,12 @@ OfferPilot MCP 是一个面向 AI、软件开发和技术岗位求职者的智�
 
 ### 技能与要求抽取
 
-- 从岗位描述中抽取技能。
-- 从岗位描述中抽取结构化要求，例如学历、英语、专业、经验、项目经历等。
+- 优先由 LLM 从岗位原文中抽取技能和结构化要求，模型不可用时使用规则兜底。
+- 抽取学历、英语、专业、经验、项目经历、职责和软能力等岗位要求。
+- LLM 抽取项必须携带 JD 原文证据，无法在原文中验证的技能和要求会被丢弃。
+- 技能类别、重要性和输出数量经过代码校验，避免模型结果直接污染技能库。
 - 技能写入 `skills` 和 `job_skills`。
+- 重复抽取会同步替换岗位技能关联，避免保留过期标签。
 - 结构化要求写入 `jobs.requirement_json`。
 
 ### 用户画像
@@ -56,22 +59,29 @@ OfferPilot MCP 是一个面向 AI、软件开发和技术岗位求职者的智�
 ### Text2SQL
 
 - 支持自然语言查询岗位数据。
-- 通过 SQL Guard 限制只读查询。
-- 禁止非 SELECT、危险关键字和多语句执行。
+- 优先由 LLM 根据真实 MySQL Schema 生成 SQL，模型不可用时回退到规则查询。
+- 使用 SQLGlot 将 SQL 解析为 AST，再由 SQL Guard 校验允许的表、字段、函数和查询结构。
+- 首次 SQL 未通过 Guard 时，允许模型根据拒绝原因自修复一次；修复后仍不安全则拒绝执行。
+- 禁止非 SELECT、系统表、隐私表、危险函数、多语句、子查询和跨 Schema 查询。
+- 查询最多返回100行，前端和 Agent Trace 会展示 `llm`、`llm_repaired` 或 `rules_fallback` 生成模式。
 
 ### Agent 与工具调用
 
-- 支持 Agent 路由：
+- Agent Router 优先使用 LLM 理解自然语言任务，并只允许路由到已注册 Skill；模型不可用、结果非法、置信度低或缺少必要参数时使用规则兜底。
+- 当前支持3个可执行 Skill：
   - `job-search`
   - `jd-crawl`
   - `jd-analysis`
+- `.skills/*/SKILL.md` 会被解析为结构化执行约束，包括触发关键词、执行步骤、允许工具、质量检查和失败处理。
+- Executor 在每次工具调用前检查当前 Skill 的工具白名单，禁止跨 Skill 调用未授权工具。
 - 支持 Tool Registry：
   - `search_jobs`
   - `list_skills`
   - `text2sql_query`
   - `crawl_job_url`
   - `extract_skills`
-- 支持 Agent Trace 和 Tool Call Log，便于调试和面试展示。
+- Agent Trace 会记录路由方式、置信度、Skill 执行步骤、工具白名单、输入输出和调用编号；Tool Call Log 记录真实工具执行结果。
+- Agent Planner 会在白名单范围内生成最多3步的最小计划。当前支持“采集公开 URL 后，按用户明确要求继续抽取该岗位技能”的真实两步链路；后续步骤只读取前一步真实输出中的 `job_id`。
 - 支持官方 MCP Streamable HTTP Endpoint：`/mcp/`。
 - 当前通过 MCP 暴露3个只读工具：
   - `search_jobs`
@@ -178,6 +188,10 @@ LLM_MODEL=your_model
 OPENROUTER_API_KEY=your_api_key
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 OPENROUTER_MODEL=your_model
+
+MCP_ACCESS_TOKEN=replace-with-a-long-random-token
+MCP_RATE_LIMIT_REQUESTS=60
+MCP_RATE_LIMIT_WINDOW_SECONDS=60
 ```
 
 不要提交真实 `.env`、API Key、数据库密码、简历文件或私密岗位数据。
@@ -281,6 +295,14 @@ mcp dev backend\mcp_server.py:offerpilot_mcp
 http://127.0.0.1:8000/mcp/
 ```
 
+远程或 FastAPI 挂载地址必须在每次请求中携带 Bearer Token。Inspector CLI 示例：
+
+```bat
+npx -y @modelcontextprotocol/inspector --cli http://127.0.0.1:8000/mcp/ --transport http --method tools/list --header "Authorization: Bearer your_mcp_token"
+```
+
+Token 只能放在 `Authorization` Header，不要拼接到 URL。`mcp dev` 直接加载 Server 对象进行本地调试，不经过 FastAPI 外层的 Token 中间件。
+
 ## 当前项目边界
 
 当前已经能作为本地作品集演示版本使用，但还不等于生产级系统。
@@ -292,7 +314,7 @@ http://127.0.0.1:8000/mcp/
 - 技能和岗位要求抽取。
 - 简历画像抽取。
 - 岗位匹配分析。
-- Text2SQL 只读查询保护。
+- LLM Text2SQL、AST SQL Guard 和规则兜底。
 - Agent 工具调用链路。
 - 前端工作台。
 - REST API 登录鉴权、管理员权限和用户画像归属校验。
@@ -300,8 +322,8 @@ http://127.0.0.1:8000/mcp/
 仍需完善：
 
 - 自动化测试覆盖不足。
-- MCP 当前只暴露只读岗位工具，尚未实现远程 MCP 鉴权、Resources 和 Prompts。
-- REST API 已区分普通用户与管理员；远程 MCP Endpoint 尚未接入独立鉴权。
+- MCP 当前只暴露只读岗位工具，尚未实现 Resources 和 Prompts。
+- 远程 MCP 已有静态 Bearer Token 和单实例内存限流，但尚未实现标准 OAuth 2.1、scope 和多实例共享限流。
 - Skill Loader 已能发现本地 Skill，但 Skill 内容尚未真正驱动通用执行器。
 - 爬虫已具备应用层 SSRF 防护；生产环境仍应通过网络出口策略阻断内网和云元数据访问。
 - 部署环境尚未做生产级安全加固。
@@ -357,7 +379,19 @@ MYSQL_DATABASE
 LLM_API_KEY 或 OPENROUTER_API_KEY
 LLM_BASE_URL 或 OPENROUTER_BASE_URL
 LLM_MODEL 或 OPENROUTER_MODEL
+AUTH_SECRET_KEY
+MCP_ACCESS_TOKEN
+MCP_ALLOWED_HOSTS
+MCP_ALLOWED_ORIGINS
 ```
+
+生成 MCP Token：
+
+```bat
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+将输出值保存为 Render 的 `MCP_ACCESS_TOKEN`，不要写进 Git。限流默认是单实例每个来源 IP 每 60 秒 60 次请求；如果以后扩容为多个实例，需要改成 Redis 等共享限流存储。
 
 注意：PaaS 上不要使用本机 MySQL，要使用云数据库。
 
@@ -381,7 +415,7 @@ LLM_MODEL 或 OPENROUTER_MODEL
 
 可以这样介绍项目：
 
-> OfferPilot MCP 是我做的 AI 求职管理工作台。它从公开岗位页面采集真实 JD，写入 MySQL 后进行技能和岗位要求抽取，再结合用户简历画像做岗位匹配和模拟面试。后端用 FastAPI 分层实现，包含 Tool Registry、SQL Guard、Agent Trace 和工具调用日志，用来展示类 MCP 的工具调用链路和可观测性。
+> OfferPilot MCP 是我做的 AI 求职管理工作台。它从公开岗位页面采集真实 JD，写入 MySQL 后进行技能和岗位要求抽取，再结合用户简历画像做岗位匹配和模拟面试。后端用 FastAPI 分层实现，并通过官方 MCP Streamable HTTP 暴露只读工具；Tool Registry、SQL Guard、Agent Trace 和工具调用日志负责工具治理、安全检查与可观测性。
 
 需要避免这样说：
 
@@ -389,11 +423,11 @@ LLM_MODEL 或 OPENROUTER_MODEL
 
 更稳妥的说法是：
 
-> 当前版本使用官方 MCP Python SDK，通过 Streamable HTTP 暴露3个只读岗位工具，并复用现有 Tool Registry、SQL Guard 和工具日志。写操作工具、远程鉴权、Resources 与 Prompts 仍在后续范围内。
+> 当前版本使用官方 MCP Python SDK，通过 Streamable HTTP 暴露3个只读岗位工具，并复用现有 Tool Registry、SQL Guard 和工具日志。远程入口加入静态 Bearer Token、基础限流和审计；完整 OAuth 2.1、写操作工具、Resources 与 Prompts 仍在后续范围内。
 
 ## 下一步优先级
 
 1. 补充自动化测试，至少覆盖健康检查、岗位采集、技能抽取、Text2SQL Guard、简历解析和匹配分析。
-2. 为远程 MCP 补充鉴权，并为公网写接口增加限流与审计。
+2. 将远程 MCP 的静态 Token 升级为标准 OAuth 2.1，并为公网写接口增加共享限流与审计。
 3. 让 Skill 定义真正约束允许工具、执行步骤和质量检查。
 4. 整理 `eval/`，形成可复现的项目评估报告。

@@ -12,6 +12,11 @@ from backend.database import engine
 
 def save_job_skills(job_id: int, skills: list[dict]) -> None:
     with engine.begin() as connection:
+        connection.execute(
+            text("DELETE FROM job_skills WHERE job_id = :job_id"),
+            {"job_id": job_id},
+        )
+
         for skill in skills:
             skill_id = _get_or_create_skill(
                 connection=connection,

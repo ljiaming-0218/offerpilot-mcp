@@ -18,6 +18,7 @@ class Text2SqlRequest(BaseModel):
 class Text2SqlResponse(BaseModel):
     question: str
     sql: str
+    generation_mode: str
     safe: bool
     reason: str
     rows: list[dict]

@@ -22,5 +22,5 @@ def call_tool(
     payload: ToolCallRequest,
     current_user: dict = Depends(get_admin_user),
 ) -> dict:
-    return registry.call_tool(tool_name, payload.input)
+    return registry.call_tool(tool_name, payload.input, user_id=str(current_user["user_id"]))
 

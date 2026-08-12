@@ -1,7 +1,35 @@
+import logging
 import re
+from pathlib import Path
+
+import requests
 
 from backend.errors import AppError
 from backend.repositories import job_repository, skill_repository
+from backend.services import llm_service
+
+
+PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "skill_extract_prompt.txt"
+logger = logging.getLogger("offerpilot.skill_extract")
+
+ALLOWED_IMPORTANCE = {"high", "medium", "low"}
+ALLOWED_DIFFICULTY = {"high", "medium", "low"}
+ALLOWED_CATEGORIES = {
+    "RAG",
+    "Agent",
+    "MCP",
+    "Tool Calling",
+    "Text2SQL",
+    "Prompt",
+    "Backend",
+    "Frontend",
+    "Database",
+    "Algorithm",
+    "Deployment",
+    "Evaluation",
+    "Engineering",
+    "LLM Basic",
+}
 
 
 SKILL_RULES = [
@@ -115,8 +143,7 @@ def extract_skills_for_job(job_id: int) -> dict:
         )
 
     text = f"{job.get('title', '')}\n{job.get('description', '')}"
-    skills = _extract_skills_by_rules(text)
-    requirement = _extract_requirement_by_rules(text, skills)
+    skills, requirement, generation_mode = _extract_job_requirements(text)
 
     if not skills and not _has_requirement(requirement):
         raise AppError(
@@ -125,19 +152,136 @@ def extract_skills_for_job(job_id: int) -> dict:
             status_code=422,
         )
 
-    if skills:
-        skill_repository.save_job_skills(job_id=job_id, skills=skills)
+    skill_repository.save_job_skills(job_id=job_id, skills=skills)
 
     job_repository.save_job_requirement(job_id=job_id, requirement=requirement)
 
     return {
         "job_id": job_id,
+        "generation_mode": generation_mode,
         "skills": skills,
         "requirement": requirement,
         "job_orientation": requirement["job_orientation"],
         "difficulty": requirement["difficulty"],
         "summary": requirement["summary"],
     }
+
+
+def _extract_job_requirements(text: str) -> tuple[list[dict], dict, str]:
+    if llm_service.is_llm_available():
+        try:
+            result = llm_service.chat_json(
+                system_prompt=PROMPT_PATH.read_text(encoding="utf-8"),
+                user_prompt=f"岗位原文：\n{text}",
+                timeout=60,
+            )
+            skills, requirement = _normalize_llm_result(result, text)
+            if skills or _has_requirement(requirement):
+                return skills, requirement, "llm"
+            logger.warning("JD extraction returned no evidence-backed fields; using rules fallback")
+        except (AppError, requests.RequestException) as exc:
+            logger.warning("JD LLM extraction failed; using rules fallback: %s", exc)
+
+    skills = _extract_skills_by_rules(text)
+    return skills, _extract_requirement_by_rules(text, skills), "rules_fallback"
+
+
+def _normalize_llm_result(result: dict, source_text: str) -> tuple[list[dict], dict]:
+    skills = []
+    seen_skills = set()
+    for item in _as_dict_list(result.get("skills"))[:20]:
+        name = _clean_text(item.get("skill_name"), 120)
+        category = _clean_text(item.get("category"), 80)
+        if category not in ALLOWED_CATEGORIES:
+            category = "Engineering"
+        importance = _clean_text(item.get("importance"), 20).lower()
+        evidence = _verified_evidence(item.get("evidence"), source_text)
+        key = name.lower()
+        if not name or importance not in ALLOWED_IMPORTANCE or not evidence or key in seen_skills:
+            continue
+        seen_skills.add(key)
+        skills.append(
+            {
+                "skill_name": name,
+                "category": category,
+                "importance": importance,
+                "evidence": evidence,
+            }
+        )
+
+    evidence_map = {}
+    requirement = {"technical_skills": skills}
+    for field in [
+        "education_requirements",
+        "major_requirements",
+        "language_requirements",
+        "experience_requirements",
+        "soft_skill_requirements",
+        "bonus_requirements",
+        "responsibilities",
+    ]:
+        values, evidence = _normalize_evidence_items(result.get(field), source_text, limit=8 if field == "responsibilities" else 10)
+        requirement[field] = values
+        evidence_map[field] = evidence
+
+    orientation = _clean_text(result.get("job_orientation"), 80) or _infer_job_orientation(skills, source_text)
+    difficulty = _clean_text(result.get("difficulty"), 20).lower()
+    if difficulty not in ALLOWED_DIFFICULTY:
+        difficulty = _infer_difficulty(skills)
+    summary = _clean_text(result.get("summary"), 300) or _build_summary(skills)
+
+    requirement.update(
+        {
+            "evidence": evidence_map,
+            "job_orientation": orientation,
+            "difficulty": difficulty,
+            "summary": summary,
+        }
+    )
+    return skills, requirement
+
+
+def _normalize_evidence_items(value, source_text: str, limit: int) -> tuple[list[str], list[dict]]:
+    values = []
+    evidence_items = []
+    seen = set()
+    for item in _as_dict_list(value):
+        extracted_value = _clean_text(item.get("value"), 180)
+        evidence = _verified_evidence(item.get("evidence"), source_text)
+        key = extracted_value.lower()
+        if not extracted_value or not evidence or key in seen:
+            continue
+        seen.add(key)
+        values.append(extracted_value)
+        evidence_items.append({"value": extracted_value, "evidence": evidence})
+        if len(values) >= limit:
+            break
+    return values, evidence_items
+
+
+def _verified_evidence(value, source_text: str) -> str | None:
+    evidence = _clean_text(value, 240)
+    if not evidence:
+        return None
+    normalized_source = _normalize_evidence_text(source_text)
+    normalized_evidence = _normalize_evidence_text(evidence)
+    return evidence if normalized_evidence and normalized_evidence in normalized_source else None
+
+
+def _normalize_evidence_text(value: str) -> str:
+    return re.sub(r"\s+", "", value).lower()
+
+
+def _as_dict_list(value) -> list[dict]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
+def _clean_text(value, max_length: int) -> str:
+    if not isinstance(value, str):
+        return ""
+    return " ".join(value.strip().split())[:max_length]
 
 
 def _extract_skills_by_rules(text: str) -> list[dict]:

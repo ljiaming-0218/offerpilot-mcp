@@ -5,10 +5,12 @@ class ExtractedSkill(BaseModel):
     skill_name: str
     category: str
     importance: str
+    evidence: str | None = None
 
 
 class SkillExtractResult(BaseModel):
     job_id: int
+    generation_mode: str
     skills: list[ExtractedSkill]
     requirement: dict
     job_orientation: str

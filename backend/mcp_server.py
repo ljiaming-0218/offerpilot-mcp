@@ -5,6 +5,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import ToolAnnotations
 
 from backend.config import settings
+from backend.mcp_security import McpSecurityMiddleware
 from backend.tools import registry
 
 
@@ -36,7 +37,7 @@ READ_ONLY_TOOL = ToolAnnotations(
     structured_output=True,
 )
 def search_jobs() -> list[dict[str, Any]]:
-    return registry.call_tool("search_jobs", {})["result"]
+    return registry.call_tool("search_jobs", {}, user_id="mcp")["result"]
 
 
 @offerpilot_mcp.tool(
@@ -47,7 +48,7 @@ def search_jobs() -> list[dict[str, Any]]:
     structured_output=True,
 )
 def list_skills() -> list[dict[str, Any]]:
-    return registry.call_tool("list_skills", {})["result"]
+    return registry.call_tool("list_skills", {}, user_id="mcp")["result"]
 
 
 @offerpilot_mcp.tool(
@@ -58,7 +59,7 @@ def list_skills() -> list[dict[str, Any]]:
     structured_output=True,
 )
 def text2sql_query(question: str) -> dict[str, Any]:
-    return registry.call_tool("text2sql_query", {"question": question})["result"]
+    return registry.call_tool("text2sql_query", {"question": question}, user_id="mcp")["result"]
 
 
 def _transport_security() -> TransportSecuritySettings | None:
@@ -72,7 +73,14 @@ def _transport_security() -> TransportSecuritySettings | None:
     )
 
 
-mcp_http_app = offerpilot_mcp.streamable_http_app(
+mcp_transport_app = offerpilot_mcp.streamable_http_app(
     streamable_http_path="/",
     transport_security=_transport_security(),
+)
+
+mcp_http_app = McpSecurityMiddleware(
+    mcp_transport_app,
+    access_token=settings.mcp_access_token,
+    rate_limit_requests=settings.mcp_rate_limit_requests,
+    rate_limit_window_seconds=settings.mcp_rate_limit_window_seconds,
 )

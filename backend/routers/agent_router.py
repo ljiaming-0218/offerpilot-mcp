@@ -18,7 +18,7 @@ def route_task(payload: AgentRouteRequest, current_user: dict = Depends(get_admi
 
 @router.post("/run", response_model=AgentRunResult)
 def run_agent(payload: AgentRunRequest, current_user: dict = Depends(get_admin_user)) -> dict:
-    return executor.run_agent(payload.task)
+    return executor.run_agent(payload.task, user_id=str(current_user["user_id"]))
 
 @router.get("/traces", response_model=list[AgentTraceListItem])
 def list_agent_traces(limit: int = 20, current_user: dict = Depends(get_admin_user)) -> list[dict]:

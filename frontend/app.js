@@ -488,7 +488,11 @@ function renderJobDetail(job, extracted = null) {
         <div class="tag-list" id="drawer-skill-result">
           ${extracted ? renderExtractedSkillTags(extracted.skills) : `<span class="muted">当前岗位详情接口暂不返回已关联技能，可通过提取按钮验证写库。</span>`}
         </div>
-        ${extracted ? `<p class="muted">${escapeHtml(extracted.summary || "")}</p>` : ""}
+        ${extracted ? `
+          <p class="muted">抽取方式：${escapeHtml(formatExtractionMode(extracted.generation_mode))}</p>
+          <p class="muted">${escapeHtml(extracted.summary || "")}</p>
+          ${renderSkillEvidence(extracted.skills)}
+        ` : ""}
       </div>
       ${renderRequirementBlock(extracted?.requirement || job.requirement_json)}
     </div>
@@ -534,6 +538,28 @@ function renderRequirementBlock(requirement) {
 function renderExtractedSkillTags(skills = []) {
   if (!skills.length) return `<span class="muted">未抽取到技能。</span>`;
   return skills.map((skill) => `<span class="tag">${escapeHtml(skill.skill_name)}<small>${escapeHtml(skill.importance || skill.category || "")}</small></span>`).join("");
+}
+
+function formatExtractionMode(mode) {
+  return mode === "llm" ? "LLM 语义抽取" : mode === "rules_fallback" ? "规则兜底" : "未知";
+}
+
+function renderSkillEvidence(skills = []) {
+  const evidenceItems = skills.filter((skill) => skill.evidence);
+  if (!evidenceItems.length) return "";
+  return `
+    <div class="match-section">
+      <span class="muted">原文证据</span>
+      <div class="evidence-list">
+        ${evidenceItems.map((skill) => `
+          <div class="evidence-item">
+            <strong>${escapeHtml(skill.skill_name)}</strong>
+            <p>${escapeHtml(skill.evidence)}</p>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
 }
 
 async function extractJobSkills(jobId, button = null) {
@@ -1125,14 +1151,28 @@ function renderCurrentTrace(trace = []) {
   }
 
   target.innerHTML = trace.map((step) => {
-    const meta = [step.type, step.skill_name, step.tool_name, step.call_id ? `call_id=${step.call_id}` : ""]
+    const routeMode = step.generation_mode === "llm"
+      ? "LLM 路由"
+      : step.generation_mode === "rules_fallback" ? "规则兜底" : "";
+    const confidence = Number.isFinite(step.confidence)
+      ? `置信度 ${Math.round(step.confidence * 100)}%`
+      : "";
+    const meta = [step.type, step.skill_name, step.tool_name, routeMode, confidence, step.call_id ? `call_id=${step.call_id}` : ""]
       .filter(Boolean)
       .join(" · ");
+    const allowedTools = Array.isArray(step.allowed_tools) && step.allowed_tools.length
+      ? `<p>允许工具：${escapeHtml(step.allowed_tools.join("、"))}</p>`
+      : "";
+    const executionSteps = Array.isArray(step.execution_steps) && step.execution_steps.length
+      ? `<p>执行步骤：${escapeHtml(step.execution_steps.join("；"))}</p>`
+      : "";
     return `
       <div class="timeline-item" data-step="${escapeHtml(step.step)}">
         <strong>${escapeHtml(step.content)}</strong>
         <p>${escapeHtml(meta)}</p>
         ${step.reason ? `<p>${escapeHtml(step.reason)}</p>` : ""}
+        ${allowedTools}
+        ${executionSteps}
       </div>
     `;
   }).join("");
@@ -1150,8 +1190,16 @@ function renderQueryResult(toolOutput) {
   const rows = toolOutput?.rows || [];
   const isTableResult = Array.isArray(rows) && rows.length > 0;
   const tableCard = $("result-table-card");
+  const generationMode = toolOutput?.generation_mode;
 
   $("sql-output").textContent = sql;
+  $("sql-generation-mode").textContent = generationMode === "llm"
+    ? "LLM + SQL Guard"
+    : generationMode === "llm_repaired"
+      ? "LLM 自修复 + SQL Guard"
+    : generationMode === "rules_fallback"
+      ? "规则兜底 + SQL Guard"
+      : "SQL Guard";
   $("rows-summary").textContent = isTableResult ? `返回 ${rows.length} 行` : "暂无表格结果";
 
   if (!isTableResult) {

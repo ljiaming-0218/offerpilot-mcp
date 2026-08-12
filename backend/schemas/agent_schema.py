@@ -9,6 +9,8 @@ class AgentRouteResult(BaseModel):
     task: str
     skill_name: str
     reason: str
+    generation_mode: str
+    confidence: float = Field(..., ge=0, le=1)
 
 class AgentRunRequest(BaseModel):
     task: str = Field(..., min_length=1)
@@ -24,6 +26,10 @@ class AgentTraceStep(BaseModel):
     input: dict | None = None
     output: dict | list | None = None
     call_id: int | None = None
+    generation_mode: str | None = None
+    confidence: float | None = Field(default=None, ge=0, le=1)
+    allowed_tools: list[str] | None = None
+    execution_steps: list[str] | None = None
 
 
 

@@ -3,6 +3,7 @@ uvicorn[standard]>=0.30.0
 pydantic>=2.7.0
 pydantic-settings>=2.2.0
 SQLAlchemy>=2.0.0
+sqlglot>=27.0.0,<29.0.0
 PyMySQL>=1.1.0
 python-dotenv>=1.0.0
 httpx2>=2.9.1

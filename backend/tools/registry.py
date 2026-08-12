@@ -62,7 +62,7 @@ def list_tools() -> list[dict]:
     ]
 
 
-def call_tool(tool_name: str, input_data: dict) -> dict:
+def call_tool(tool_name: str, input_data: dict, user_id: str | None = None) -> dict:
     started_at = time.perf_counter()
     tool = TOOLS.get(tool_name)
 
@@ -91,6 +91,7 @@ def call_tool(tool_name: str, input_data: dict) -> dict:
             status="success",
             error_message=None,
             latency_ms=latency_ms,
+            user_id=user_id,
         )
 
         return {
@@ -112,6 +113,7 @@ def call_tool(tool_name: str, input_data: dict) -> dict:
             status="failed",
             error_message=exc.message,
             latency_ms=latency_ms,
+            user_id=user_id,
         )
 
         raise AppError(

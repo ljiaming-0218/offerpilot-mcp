@@ -1,0 +1,27 @@
+[
+  {
+    "question": "北京有哪些 AI 岗位？",
+    "expected_tables": ["jobs", "companies"],
+    "expected_semantics": ["city_filter", "job_list"]
+  },
+  {
+    "question": "按公司统计北京的岗位数量，只显示岗位数最多的前5家公司",
+    "expected_tables": ["jobs", "companies"],
+    "expected_semantics": ["city_filter", "group_by_company", "count_jobs", "limit_5"]
+  },
+  {
+    "question": "杭州有哪些要求 Agent 技能的岗位？",
+    "expected_tables": ["jobs", "companies", "job_skills", "skills"],
+    "expected_semantics": ["city_filter", "skill_filter", "job_list"]
+  },
+  {
+    "question": "统计岗位中出现次数最多的10项技能",
+    "expected_tables": ["skills", "job_skills"],
+    "expected_semantics": ["group_by_skill", "count_jobs", "limit_10"]
+  },
+  {
+    "question": "不同岗位类型分别有多少条岗位？",
+    "expected_tables": ["jobs"],
+    "expected_semantics": ["group_by_job_type", "count_jobs"]
+  }
+]

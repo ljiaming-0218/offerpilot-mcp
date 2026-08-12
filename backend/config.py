@@ -33,6 +33,9 @@ class Settings(BaseSettings):
 
     mcp_allowed_hosts: str = ""
     mcp_allowed_origins: str = ""
+    mcp_access_token: str = ""
+    mcp_rate_limit_requests: int = Field(default=60, ge=1, le=10_000)
+    mcp_rate_limit_window_seconds: int = Field(default=60, ge=1, le=86_400)
 
     model_config = SettingsConfigDict(
         env_file=".env",

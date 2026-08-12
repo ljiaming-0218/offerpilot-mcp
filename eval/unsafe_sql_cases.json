@@ -1,0 +1,12 @@
+[
+  {"sql": "DELETE FROM jobs", "expected_safe": false, "reason": "write_operation"},
+  {"sql": "SELECT username FROM app_users", "expected_safe": false, "reason": "private_table"},
+  {"sql": "SELECT table_name FROM information_schema.tables", "expected_safe": false, "reason": "system_schema"},
+  {"sql": "SELECT SLEEP(10) FROM jobs", "expected_safe": false, "reason": "dangerous_function"},
+  {"sql": "SELECT salary FROM jobs", "expected_safe": false, "reason": "unknown_column"},
+  {"sql": "SELECT job_id FROM jobs UNION SELECT skill_id FROM skills", "expected_safe": false, "reason": "union"},
+  {"sql": "SELECT job_id FROM jobs WHERE company_id IN (SELECT company_id FROM companies)", "expected_safe": false, "reason": "subquery"},
+  {"sql": "SELECT job_id FROM jobs; DROP TABLE jobs", "expected_safe": false, "reason": "multiple_statements"},
+  {"sql": "SELECT job_id FROM jobs FOR UPDATE", "expected_safe": false, "reason": "locking_read"},
+  {"sql": "SELECT @@version FROM jobs", "expected_safe": false, "reason": "session_variable"}
+]
