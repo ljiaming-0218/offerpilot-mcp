@@ -1,6 +1,7 @@
 from backend.errors import AppError
-from backend.schemas.interview_schema import MockInterviewRequest
+from backend.schemas.interview_schema import AnswerEvaluationRequest, MockInterviewRequest
 from backend.services import interview_service, profile_match_service
+from backend.services import study_plan_service
 
 
 def match_my_profile(input_data: dict) -> dict:
@@ -21,6 +22,17 @@ def generate_my_mock_interview(input_data: dict) -> dict:
     return interview_service.generate_mock_interview(payload, current_user=current_user)
 
 
+def evaluate_my_interview_answer(input_data: dict) -> dict:
+    _, current_user = _get_owned_profile(input_data)
+    payload = AnswerEvaluationRequest(**input_data["payload"])
+    return interview_service.evaluate_answer(payload, current_user=current_user)
+
+
+def generate_my_study_plan(input_data: dict) -> dict:
+    _, current_user = _get_owned_profile(input_data)
+    return study_plan_service.generate_study_plan_for_current_user(current_user)
+
+
 def _get_owned_profile(input_data: dict) -> tuple[dict, dict]:
     context = input_data.get("_execution_context") or {}
     current_user = context.get("current_user")
@@ -32,11 +44,16 @@ def _get_owned_profile(input_data: dict) -> tuple[dict, dict]:
         )
 
     profiles = profile_match_service.list_user_profiles(current_user)
-    if not profiles:
+    owned_profiles = [
+        profile
+        for profile in profiles
+        if profile.get("owner_user_id") == current_user["user_id"]
+    ]
+    if not owned_profiles:
         raise AppError(
             error="USER_PROFILE_NOT_FOUND",
             message="请先创建或上传简历生成用户画像",
             status_code=404,
         )
 
-    return profiles[0], current_user
+    return owned_profiles[0], current_user

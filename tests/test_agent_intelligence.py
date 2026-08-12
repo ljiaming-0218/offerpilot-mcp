@@ -94,6 +94,19 @@ class AgentRouterTests(unittest.TestCase):
         self.assertEqual(match_result["skill_name"], "profile-match")
         self.assertEqual(interview_result["skill_name"], "mock-interview")
 
+    def test_rules_route_answer_evaluation_and_study_plan(self) -> None:
+        with patch(
+            "backend.agent.intent_router.llm_service.is_llm_available",
+            return_value=False,
+        ):
+            evaluation_result = intent_router.route_task(
+                "评估回答：会话 5，题目：请介绍项目架构，回答：我先说明数据流，再说明服务边界和测试方法。"
+            )
+            plan_result = intent_router.route_task("根据我的岗位匹配生成学习计划")
+
+        self.assertEqual(evaluation_result["skill_name"], "answer-evaluator")
+        self.assertEqual(plan_result["skill_name"], "study-plan")
+
 
 class SkillLoaderTests(unittest.TestCase):
     def test_loads_structured_job_search_constraints(self) -> None:
@@ -116,6 +129,13 @@ class SkillLoaderTests(unittest.TestCase):
 
         self.assertEqual(profile_skill["allowed_tools"], ["match_my_profile"])
         self.assertEqual(interview_skill["allowed_tools"], ["generate_my_mock_interview"])
+
+    def test_evaluation_and_study_skills_have_single_purpose_tools(self) -> None:
+        evaluation_skill = skill_loader.load_skill("answer-evaluator")
+        study_skill = skill_loader.load_skill("study-plan")
+
+        self.assertEqual(evaluation_skill["allowed_tools"], ["evaluate_my_interview_answer"])
+        self.assertEqual(study_skill["allowed_tools"], ["generate_my_study_plan"])
 
 
 class AgentPlannerTests(unittest.TestCase):
@@ -177,6 +197,21 @@ class AgentPlannerTests(unittest.TestCase):
             interview_plan["steps"][0]["tool_name"],
             "generate_my_mock_interview",
         )
+
+    def test_rules_plan_for_evaluation_and_study_is_single_step(self) -> None:
+        evaluation_plan = planner._create_rules_plan(
+            "评估回答：会话 5，题目：请介绍项目架构，回答：我先说明数据流，再说明服务边界和测试方法。",
+            "answer-evaluator",
+            {"evaluate_my_interview_answer"},
+        )
+        study_plan = planner._create_rules_plan(
+            "根据我的岗位匹配生成学习计划",
+            "study-plan",
+            {"generate_my_study_plan"},
+        )
+
+        self.assertEqual(evaluation_plan["steps"][0]["tool_name"], "evaluate_my_interview_answer")
+        self.assertEqual(study_plan["steps"][0]["tool_name"], "generate_my_study_plan")
 
 
 class AgentExecutorPermissionTests(unittest.TestCase):
@@ -264,6 +299,15 @@ class AgentExecutorPermissionTests(unittest.TestCase):
             call_tool.call_args.kwargs["execution_context"],
             {"current_user": {"user_id": 3, "role": "user"}},
         )
+
+    def test_answer_evaluation_payload_ignores_task_prefix(self) -> None:
+        payload = executor._build_answer_evaluation_payload(
+            "评估回答：会话 5，题目：请介绍项目架构，回答：我先说明数据流，再说明服务边界和测试方法。"
+        )
+
+        self.assertEqual(payload["session_id"], 5)
+        self.assertEqual(payload["question"], "请介绍项目架构")
+        self.assertEqual(payload["user_answer"], "我先说明数据流，再说明服务边界和测试方法。")
 
 
 if __name__ == "__main__":

@@ -7,7 +7,12 @@ from backend.repositories import tool_log_repository
 from backend.tools.base import ToolDefinition
 from backend.tools.crawler_tools import crawl_job_url
 from backend.tools.job_tools import extract_skills, search_jobs
-from backend.tools.profile_tools import generate_my_mock_interview, match_my_profile
+from backend.tools.profile_tools import (
+    evaluate_my_interview_answer,
+    generate_my_mock_interview,
+    generate_my_study_plan,
+    match_my_profile,
+)
 from backend.tools.skill_tools import list_skills
 from backend.tools.text2sql_tools import text2sql_query
 
@@ -61,6 +66,20 @@ TOOLS = {
         risk_level="medium",
         enabled=True,
         callable_function=generate_my_mock_interview,
+    ),
+    "evaluate_my_interview_answer": ToolDefinition(
+        tool_name="evaluate_my_interview_answer",
+        description="评估当前登录用户自己的模拟面试回答",
+        risk_level="medium",
+        enabled=True,
+        callable_function=evaluate_my_interview_answer,
+    ),
+    "generate_my_study_plan": ToolDefinition(
+        tool_name="generate_my_study_plan",
+        description="根据当前登录用户画像和真实岗位缺口生成学习计划",
+        risk_level="medium",
+        enabled=True,
+        callable_function=generate_my_study_plan,
     ),
 }
 

@@ -15,6 +15,8 @@ ALLOWED_SKILLS = {
     "jd-analysis",
     "profile-match",
     "mock-interview",
+    "answer-evaluator",
+    "study-plan",
 }
 MIN_ROUTE_CONFIDENCE = 0.55
 logger = logging.getLogger("offerpilot.agent.router")
@@ -70,6 +72,9 @@ def _normalize_llm_route(task: str, result: dict) -> dict | None:
     if skill_name == "mock-interview" and _extract_job_id(task) is None:
         return None
 
+    if skill_name == "answer-evaluator" and not _has_answer_evaluation_fields(task):
+        return None
+
     return {
         "task": task,
         "skill_name": skill_name,
@@ -91,11 +96,23 @@ def _route_task_by_rules(task: str) -> dict:
     ):
         return _rule_result(task, "jd-analysis", "任务包含岗位 ID 和岗位分析意图")
 
+    if _has_answer_evaluation_fields(task) and _contains_any(
+        normalized_task,
+        ["评估回答", "回答评分", "评价回答", "复盘回答"],
+    ):
+        return _rule_result(task, "answer-evaluator", "任务包含面试会话、题目和回答")
+
     if _extract_job_id(task) and _contains_any(
         normalized_task,
         ["模拟面试", "面试题", "面试训练", "面试准备"],
     ):
         return _rule_result(task, "mock-interview", "任务包含岗位 ID 和模拟面试意图")
+
+    if _contains_any(
+        normalized_task,
+        ["学习计划", "学习安排", "学习优先级", "补齐技能", "提升计划"],
+    ):
+        return _rule_result(task, "study-plan", "任务表达了基于当前画像和岗位缺口的学习计划意图")
 
     if _contains_any(
         normalized_task,
@@ -132,6 +149,15 @@ def _extract_job_id(task: str) -> int | None:
         if match:
             return int(match.group(1))
     return None
+
+
+def _has_answer_evaluation_fields(task: str) -> bool:
+    return _extract_session_id(task) is not None and "题目：" in task and "回答：" in task
+
+
+def _extract_session_id(task: str) -> int | None:
+    match = re.search(r"(?:会话|session)\s*(?:id\s*[=:：]?\s*)?(\d+)", task, flags=re.IGNORECASE)
+    return int(match.group(1)) if match else None
 
 
 def _contains_any(text: str, keywords: list[str]) -> bool:

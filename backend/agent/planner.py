@@ -96,6 +96,10 @@ def _create_rules_plan(task: str, skill_name: str, allowed_tools: set[str]) -> d
         steps = [_step("match_my_profile", "使用当前登录用户画像匹配真实岗位")]
     elif skill_name == "mock-interview":
         steps = [_step("generate_my_mock_interview", "基于当前画像和指定岗位生成面试题")]
+    elif skill_name == "answer-evaluator":
+        steps = [_step("evaluate_my_interview_answer", "评估当前用户自己的面试回答")]
+    elif skill_name == "study-plan":
+        steps = [_step("generate_my_study_plan", "根据当前画像和岗位能力缺口生成学习优先级")]
     else:
         raise AppError(
             error="SKILL_NOT_SUPPORTED",
@@ -137,6 +141,10 @@ def _is_valid_plan_shape(task: str, skill_name: str, steps: list[dict]) -> bool:
         return tool_names == ["match_my_profile"]
     if skill_name == "mock-interview":
         return tool_names == ["generate_my_mock_interview"]
+    if skill_name == "answer-evaluator":
+        return tool_names == ["evaluate_my_interview_answer"]
+    if skill_name == "study-plan":
+        return tool_names == ["generate_my_study_plan"]
     return False
 
 

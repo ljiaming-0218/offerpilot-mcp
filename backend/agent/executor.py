@@ -4,6 +4,7 @@ import re
 from backend.repositories import agent_trace_repository
 from backend.agent import intent_router, planner, skill_loader
 from backend.errors import AppError
+from backend.schemas.interview_schema import AnswerEvaluationRequest
 from backend.tools import registry
 
 
@@ -132,7 +133,12 @@ def _execute_plan(
             user_id=user_id,
             execution_context=(
                 {"current_user": current_user}
-                if tool_name in {"match_my_profile", "generate_my_mock_interview"}
+                if tool_name in {
+                    "match_my_profile",
+                    "generate_my_mock_interview",
+                    "evaluate_my_interview_answer",
+                    "generate_my_study_plan",
+                }
                 else None
             ),
         )
@@ -179,6 +185,12 @@ def _build_tool_input(tool_name: str, task: str, tool_outputs: dict[str, dict]) 
             )
         return {"job_id": job_id}
 
+    if tool_name == "evaluate_my_interview_answer":
+        return {"payload": _build_answer_evaluation_payload(task)}
+
+    if tool_name == "generate_my_study_plan":
+        return {}
+
     raise AppError(
         error="AGENT_TOOL_INPUT_UNSUPPORTED",
         message="Agent 暂不支持构造该工具的输入参数",
@@ -202,6 +214,10 @@ def _build_final_answer(skill_name: str, tool_outputs: dict[str, dict]) -> str:
         return _build_profile_match_answer(tool_outputs["match_my_profile"])
     if skill_name == "mock-interview":
         return _build_mock_interview_answer(tool_outputs["generate_my_mock_interview"])
+    if skill_name == "answer-evaluator":
+        return _build_answer_evaluation_answer(tool_outputs["evaluate_my_interview_answer"])
+    if skill_name == "study-plan":
+        return _build_study_plan_answer(tool_outputs["generate_my_study_plan"])
     raise AppError(
         error="SKILL_NOT_SUPPORTED",
         message="当前 Agent Executor 暂不支持该 Skill 的结果汇总",
@@ -360,4 +376,45 @@ def _build_mock_interview_answer(tool_result: dict) -> str:
     return (
         f"已针对 {tool_result.get('company_name')} 的 {tool_result.get('job_title')} "
         f"生成 {len(questions)} 道模拟面试题，面试会话 ID 为 {tool_result.get('session_id')}。"
+    )
+
+
+def _build_answer_evaluation_payload(task: str) -> dict:
+    session_id = _extract_session_id(task)
+    question_match = re.search(
+        r"(?:^|[，,\n])\s*题目：\s*(.+?)\s*(?:，|,|\n)\s*回答：",
+        task,
+        flags=re.DOTALL,
+    )
+    answer_match = re.search(r"(?:^|[，,\n])\s*回答：\s*(.+)$", task, flags=re.DOTALL)
+    if session_id is None or question_match is None or answer_match is None:
+        raise AppError(
+            error="ANSWER_EVALUATION_FIELDS_REQUIRED",
+            message="回答评估需要会话 ID、题目和回答，例如：会话 5，题目：...，回答：...",
+            status_code=400,
+        )
+    return AnswerEvaluationRequest(
+        session_id=session_id,
+        question=question_match.group(1).strip(),
+        user_answer=answer_match.group(1).strip(),
+    ).model_dump()
+
+
+def _extract_session_id(task: str) -> int | None:
+    match = re.search(r"(?:会话|session)\s*(?:id\s*[=:：]?\s*)?(\d+)", task, flags=re.IGNORECASE)
+    return int(match.group(1)) if match else None
+
+
+def _build_answer_evaluation_answer(tool_result: dict) -> str:
+    return (
+        f"回答评分完成：{tool_result.get('score', 0)} 分。"
+        f"主要改进方向：{'；'.join(tool_result.get('weaknesses', [])) or '暂无'}。"
+    )
+
+
+def _build_study_plan_answer(tool_result: dict) -> str:
+    focus_skills = tool_result.get("focus_skills", [])
+    return (
+        f"已根据 {tool_result.get('total_jobs', 0)} 个真实岗位生成学习计划。"
+        f"优先补齐：{'、'.join(focus_skills) or '暂无明确技能缺口'}。"
     )

@@ -20,9 +20,17 @@
 - 基于当前登录用户画像和指定岗位生成模拟面试题。
 - 任务必须包含岗位 ID，例如“针对 21 号岗位进行模拟面试”。
 
+6. answer-evaluator
+- 评估当前登录用户自己的模拟面试回答。
+- 任务必须包含会话 ID、题目和回答，格式如“评估回答：会话 5，题目：...，回答：...”。
+
+7. study-plan
+- 基于当前登录用户画像和真实岗位能力缺口生成学习优先级。
+- 示例：“根据我的岗位匹配生成学习计划”。
+
 只输出 JSON：
 {
-  "skill_name": "job-search|jd-crawl|jd-analysis|profile-match|mock-interview",
+  "skill_name": "job-search|jd-crawl|jd-analysis|profile-match|mock-interview|answer-evaluator|study-plan",
   "reason": "基于用户任务的简洁判断依据",
   "confidence": 0.0
 }
@@ -35,4 +43,5 @@
 - 只有明确要求抓取公开 URL 时才选择 jd-crawl。
 - 只有明确要求基于当前画像进行岗位匹配时才选择 profile-match。
 - 只有明确要求模拟面试且提供岗位 ID 时才选择 mock-interview。
+- 只有提供会话 ID、题目和回答时才选择 answer-evaluator。
 - 不输出 Markdown 或额外解释。

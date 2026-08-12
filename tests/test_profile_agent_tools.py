@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from backend.errors import AppError
 from backend.tools import profile_tools
+from backend.services import study_plan_service
 
 
 class ProfileAgentToolTests(unittest.TestCase):
@@ -58,6 +59,64 @@ class ProfileAgentToolTests(unittest.TestCase):
         self.assertEqual(payload.user_id, "resume-7")
         self.assertEqual(payload.job_id, 21)
         self.assertEqual(generate_interview.call_args.kwargs["current_user"], current_user)
+
+    def test_answer_evaluation_tool_validates_with_current_user(self) -> None:
+        current_user = {"user_id": 7, "role": "user"}
+        profile = {"user_id": "resume-7", "owner_user_id": 7}
+        with (
+            patch(
+                "backend.tools.profile_tools.profile_match_service.list_user_profiles",
+                return_value=[profile],
+            ),
+            patch(
+                "backend.tools.profile_tools.interview_service.evaluate_answer",
+                return_value={"score": 80},
+            ) as evaluate_answer,
+        ):
+            result = profile_tools.evaluate_my_interview_answer(
+                {
+                    "payload": {
+                        "session_id": 5,
+                        "question": "请介绍项目架构",
+                        "user_answer": "我先说明数据流，再说明服务边界和测试方法。",
+                    },
+                    "_execution_context": {"current_user": current_user},
+                }
+            )
+
+        self.assertEqual(result, {"score": 80})
+        self.assertEqual(evaluate_answer.call_args.args[0].session_id, 5)
+        self.assertEqual(evaluate_answer.call_args.kwargs["current_user"], current_user)
+
+
+class StudyPlanServiceTests(unittest.TestCase):
+    def test_study_plan_orders_skills_by_real_missing_job_counts(self) -> None:
+        current_user = {"user_id": 7, "role": "user"}
+        profile = {"user_id": "resume-7", "owner_user_id": 7}
+        matches = {
+            "total_jobs": 3,
+            "matched_jobs": 2,
+            "matches": [
+                {"company_name": "公司A", "title": "岗位A", "missing_skills": ["RAG", "Python"]},
+                {"company_name": "公司B", "title": "岗位B", "missing_skills": ["RAG", "Agent"]},
+                {"company_name": "公司C", "title": "岗位C", "missing_skills": ["RAG"]},
+            ],
+        }
+        with (
+            patch(
+                "backend.services.study_plan_service.profile_match_service.list_user_profiles",
+                return_value=[profile],
+            ),
+            patch(
+                "backend.services.study_plan_service.profile_match_service.match_jobs_for_user",
+                return_value=matches,
+            ),
+        ):
+            result = study_plan_service.generate_study_plan_for_current_user(current_user)
+
+        self.assertEqual(result["focus_skills"], ["RAG", "Python", "Agent"])
+        self.assertEqual(result["plan_items"][0]["target_job_count"], 3)
+        self.assertEqual(result["plan_items"][0]["matched_job_examples"], ["公司A·岗位A", "公司B·岗位B"])
 
 
 if __name__ == "__main__":

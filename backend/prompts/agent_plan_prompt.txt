@@ -22,6 +22,8 @@
 - extract_skills 使用 crawl_job_url 返回的 job_id，不要自行编造岗位 ID。
 - profile-match 使用 match_my_profile，画像由服务端登录上下文确定。
 - mock-interview 使用 generate_my_mock_interview，任务必须包含岗位 ID。
+- answer-evaluator 使用 evaluate_my_interview_answer，任务必须包含会话 ID、题目和回答。
+- study-plan 使用 generate_my_study_plan，画像由服务端登录上下文确定。
 - 不要为了增加步骤而调用无关工具。
 - confidence 必须是0到1之间的数字。
 - 不输出 Markdown 或额外解释。
