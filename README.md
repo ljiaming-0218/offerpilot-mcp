@@ -93,6 +93,7 @@ OfferPilot MCP 是一个面向 AI、软件开发和技术岗位求职者的智�
 - Agent Trace 会记录路由方式、置信度、Skill 执行步骤、工具白名单、输入输出和调用编号；Tool Call Log 记录真实工具执行结果。
 - Agent Planner 会在白名单范围内生成最多3步的最小计划。当前支持“采集公开 URL 后，按用户明确要求继续抽取该岗位技能”的真实两步链路；后续步骤只读取前一步真实输出中的 `job_id`。
 - 支持官方 MCP Streamable HTTP Endpoint：`/mcp/`。
+- 支持只读 MCP Resource：`offerpilot://skills/catalog`，用于向 MCP Host 提供真实岗位技能目录上下文。
 - 当前通过 MCP 暴露5个只读工具：
   - `search_jobs`
   - `get_job_detail`
@@ -303,7 +304,7 @@ MCP Inspector 验证：
 mcp dev backend\mcp_server.py:offerpilot_mcp
 ```
 
-在 Inspector 中依次检查 `search_jobs`、`get_job_detail`、`get_job_requirements`、`list_skills` 和 `text2sql_query`。通过 FastAPI 联调时，Streamable HTTP 地址为：
+在 Inspector 中依次检查 Resource `offerpilot://skills/catalog`，以及 `search_jobs`、`get_job_detail`、`get_job_requirements`、`list_skills` 和 `text2sql_query`。通过 FastAPI 联调时，Streamable HTTP 地址为：
 
 ```text
 http://127.0.0.1:8000/mcp/
@@ -336,7 +337,7 @@ Token 只能放在 `Authorization` Header，不要拼接到 URL。`mcp dev` 直�
 仍需完善：
 
 - 自动化测试覆盖不足。
-- MCP 当前只暴露只读岗位工具，尚未实现 Resources 和 Prompts。
+- MCP 当前暴露只读岗位工具和技能目录 Resource，尚未实现 Prompts。
 - 远程 MCP 已有静态 Bearer Token 和单实例内存限流，但尚未实现标准 OAuth 2.1、scope 和多实例共享限流。
 - Skill Loader 已能发现本地 Skill，但 Skill 内容尚未真正驱动通用执行器。
 - 爬虫已具备应用层 SSRF 防护；生产环境仍应通过网络出口策略阻断内网和云元数据访问。
@@ -437,7 +438,7 @@ python -c "import secrets; print(secrets.token_urlsafe(48))"
 
 更稳妥的说法是：
 
-> 当前版本使用官方 MCP Python SDK，通过 Streamable HTTP 暴露5个只读岗位工具，并复用现有 Tool Registry、SQL Guard 和工具日志。远程入口加入静态 Bearer Token、基础限流和审计；完整 OAuth 2.1、写操作工具、Resources 与 Prompts 仍在后续范围内。
+> 当前版本使用官方 MCP Python SDK，通过 Streamable HTTP 暴露5个只读岗位工具和1个技能目录 Resource，并复用现有 Tool Registry、SQL Guard 和工具日志。远程入口加入静态 Bearer Token、基础限流和审计；完整 OAuth 2.1、写操作工具和 Prompts 仍在后续范围内。
 
 ## 下一步优先级
 

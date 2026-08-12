@@ -1,4 +1,5 @@
 import unittest
+import asyncio
 from unittest.mock import patch
 
 from starlette.applications import Starlette
@@ -83,6 +84,27 @@ class SlidingWindowRateLimiterTests(unittest.TestCase):
 
 
 class McpToolAuditTests(unittest.TestCase):
+    def test_skill_catalog_resource_uses_real_skill_registry(self) -> None:
+        with patch(
+            "backend.mcp_server.registry.call_tool",
+            return_value={"result": [{"skill_name": "Python", "job_count": 2}]},
+        ) as call_tool:
+            resource = mcp_server.skill_catalog()
+
+        self.assertEqual(resource["skills"][0]["skill_name"], "Python")
+        self.assertEqual(
+            call_tool.call_args.args,
+            ("list_skills", {}),
+        )
+        self.assertEqual(call_tool.call_args.kwargs["user_id"], "mcp_resource")
+
+    def test_skill_catalog_is_advertised_as_mcp_resource(self) -> None:
+        resources = asyncio.run(mcp_server.offerpilot_mcp.list_resources())
+
+        self.assertTrue(
+            any(str(resource.uri) == "offerpilot://skills/catalog" for resource in resources)
+        )
+
     def test_job_detail_tools_call_registry_as_mcp_user(self) -> None:
         with patch(
             "backend.mcp_server.registry.call_tool",

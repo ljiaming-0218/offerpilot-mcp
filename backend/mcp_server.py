@@ -29,6 +29,21 @@ READ_ONLY_TOOL = ToolAnnotations(
 )
 
 
+@offerpilot_mcp.resource(
+    "offerpilot://skills/catalog",
+    name="OfferPilot 技能目录",
+    title="真实岗位技能目录",
+    description="从 OfferPilot 真实岗位数据中读取技能名称、分类和关联岗位数量。",
+    mime_type="application/json",
+)
+def skill_catalog() -> dict[str, Any]:
+    skills = registry.call_tool("list_skills", {}, user_id="mcp_resource")["result"]
+    return {
+        "source": "OfferPilot MySQL skills/job_skills",
+        "skills": skills,
+    }
+
+
 @offerpilot_mcp.tool(
     name="search_jobs",
     title="查询岗位列表",
