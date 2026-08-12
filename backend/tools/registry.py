@@ -6,7 +6,12 @@ from backend.repositories import tool_log_repository
 
 from backend.tools.base import ToolDefinition
 from backend.tools.crawler_tools import crawl_job_url
-from backend.tools.job_tools import extract_skills, search_jobs
+from backend.tools.job_tools import (
+    extract_skills,
+    get_job_detail,
+    get_job_requirements,
+    search_jobs,
+)
 from backend.tools.profile_tools import (
     evaluate_my_interview_answer,
     generate_my_mock_interview,
@@ -24,6 +29,20 @@ TOOLS = {
         risk_level="low",
         enabled=True,
         callable_function=search_jobs,
+    ),
+    "get_job_detail": ToolDefinition(
+        tool_name="get_job_detail",
+        description="按岗位 ID 读取真实岗位详情和来源链接",
+        risk_level="low",
+        enabled=True,
+        callable_function=get_job_detail,
+    ),
+    "get_job_requirements": ToolDefinition(
+        tool_name="get_job_requirements",
+        description="按岗位 ID 读取已验证的技能和结构化岗位要求",
+        risk_level="low",
+        enabled=True,
+        callable_function=get_job_requirements,
     ),
     "list_skills": ToolDefinition(
         tool_name="list_skills",

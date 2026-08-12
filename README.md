@@ -80,6 +80,8 @@ OfferPilot MCP 是一个面向 AI、软件开发和技术岗位求职者的智�
 - Executor 在每次工具调用前检查当前 Skill 的工具白名单，禁止跨 Skill 调用未授权工具。
 - 支持 Tool Registry：
   - `search_jobs`
+  - `get_job_detail`
+  - `get_job_requirements`
   - `list_skills`
   - `text2sql_query`
   - `crawl_job_url`
@@ -91,8 +93,10 @@ OfferPilot MCP 是一个面向 AI、软件开发和技术岗位求职者的智�
 - Agent Trace 会记录路由方式、置信度、Skill 执行步骤、工具白名单、输入输出和调用编号；Tool Call Log 记录真实工具执行结果。
 - Agent Planner 会在白名单范围内生成最多3步的最小计划。当前支持“采集公开 URL 后，按用户明确要求继续抽取该岗位技能”的真实两步链路；后续步骤只读取前一步真实输出中的 `job_id`。
 - 支持官方 MCP Streamable HTTP Endpoint：`/mcp/`。
-- 当前通过 MCP 暴露3个只读工具：
+- 当前通过 MCP 暴露5个只读工具：
   - `search_jobs`
+  - `get_job_detail`
+  - `get_job_requirements`
   - `list_skills`
   - `text2sql_query`
 - 爬虫、画像和面试等涉及写入或用户数据的能力暂不通过 MCP 对外开放。
@@ -299,7 +303,7 @@ MCP Inspector 验证：
 mcp dev backend\mcp_server.py:offerpilot_mcp
 ```
 
-在 Inspector 中依次检查 `search_jobs`、`list_skills` 和 `text2sql_query`。通过 FastAPI 联调时，Streamable HTTP 地址为：
+在 Inspector 中依次检查 `search_jobs`、`get_job_detail`、`get_job_requirements`、`list_skills` 和 `text2sql_query`。通过 FastAPI 联调时，Streamable HTTP 地址为：
 
 ```text
 http://127.0.0.1:8000/mcp/
@@ -433,7 +437,7 @@ python -c "import secrets; print(secrets.token_urlsafe(48))"
 
 更稳妥的说法是：
 
-> 当前版本使用官方 MCP Python SDK，通过 Streamable HTTP 暴露3个只读岗位工具，并复用现有 Tool Registry、SQL Guard 和工具日志。远程入口加入静态 Bearer Token、基础限流和审计；完整 OAuth 2.1、写操作工具、Resources 与 Prompts 仍在后续范围内。
+> 当前版本使用官方 MCP Python SDK，通过 Streamable HTTP 暴露5个只读岗位工具，并复用现有 Tool Registry、SQL Guard 和工具日志。远程入口加入静态 Bearer Token、基础限流和审计；完整 OAuth 2.1、写操作工具、Resources 与 Prompts 仍在后续范围内。
 
 ## 下一步优先级
 

@@ -41,6 +41,32 @@ def search_jobs() -> list[dict[str, Any]]:
 
 
 @offerpilot_mcp.tool(
+    name="get_job_detail",
+    title="查看岗位详情",
+    description="按岗位 ID 读取真实岗位的公司、地点、岗位描述和来源链接。",
+    annotations=READ_ONLY_TOOL,
+    structured_output=True,
+)
+def get_job_detail(job_id: int) -> dict[str, Any]:
+    return registry.call_tool(
+        "get_job_detail", {"job_id": job_id}, user_id="mcp"
+    )["result"]
+
+
+@offerpilot_mcp.tool(
+    name="get_job_requirements",
+    title="查看岗位要求",
+    description="按岗位 ID 读取已从真实 JD 验证的技能、学历、英语、专业和经验要求。",
+    annotations=READ_ONLY_TOOL,
+    structured_output=True,
+)
+def get_job_requirements(job_id: int) -> dict[str, Any]:
+    return registry.call_tool(
+        "get_job_requirements", {"job_id": job_id}, user_id="mcp"
+    )["result"]
+
+
+@offerpilot_mcp.tool(
     name="list_skills",
     title="查询技能统计",
     description="读取真实岗位关联的技能及岗位数量统计。",

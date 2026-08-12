@@ -1,4 +1,4 @@
-from backend.repositories import job_repository
+from backend.repositories import job_repository, skill_repository
 from backend.schemas.job_schema import JobCreate
 from backend.errors import AppError
 from backend.services import skill_extract_service
@@ -33,6 +33,19 @@ def get_job(job_id: int) -> dict:
         )
 
     return job
+
+
+def get_job_requirements(job_id: int) -> dict:
+    job = get_job(job_id)
+    return {
+        "job_id": job["job_id"],
+        "company_name": job["company_name"],
+        "title": job["title"],
+        "city": job["city"],
+        "job_type": job["job_type"],
+        "skills": skill_repository.list_skills_for_job(job_id),
+        "requirements": job["requirement_json"],
+    }
 
 
 def extract_skills_for_unprocessed_jobs(limit: int = 20) -> dict:

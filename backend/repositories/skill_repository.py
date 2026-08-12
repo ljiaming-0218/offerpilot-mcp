@@ -92,3 +92,25 @@ def list_skills() -> list[dict]:
         ).mappings().all()
 
     return [dict(row) for row in rows]
+
+
+def list_skills_for_job(job_id: int) -> list[dict]:
+    with engine.connect() as connection:
+        rows = connection.execute(
+            text(
+                """
+                SELECT
+                    s.skill_id,
+                    s.skill_name,
+                    s.category,
+                    js.importance
+                FROM job_skills js
+                JOIN skills s ON s.skill_id = js.skill_id
+                WHERE js.job_id = :job_id
+                ORDER BY js.importance DESC, s.skill_name ASC
+                """
+            ),
+            {"job_id": job_id},
+        ).mappings().all()
+
+    return [dict(row) for row in rows]

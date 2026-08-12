@@ -7,6 +7,7 @@ from starlette.routing import Route
 from starlette.testclient import TestClient
 
 from backend.mcp_security import McpSecurityMiddleware, SlidingWindowRateLimiter
+from backend import mcp_server
 from backend.tools import registry
 from backend.tools.base import ToolDefinition
 
@@ -82,6 +83,26 @@ class SlidingWindowRateLimiterTests(unittest.TestCase):
 
 
 class McpToolAuditTests(unittest.TestCase):
+    def test_job_detail_tools_call_registry_as_mcp_user(self) -> None:
+        with patch(
+            "backend.mcp_server.registry.call_tool",
+            return_value={"result": {"job_id": 7}},
+        ) as call_tool:
+            detail = mcp_server.get_job_detail(7)
+            requirements = mcp_server.get_job_requirements(7)
+
+        self.assertEqual(detail["job_id"], 7)
+        self.assertEqual(requirements["job_id"], 7)
+        self.assertEqual(
+            call_tool.call_args_list[0].args,
+            ("get_job_detail", {"job_id": 7}),
+        )
+        self.assertEqual(call_tool.call_args_list[0].kwargs["user_id"], "mcp")
+        self.assertEqual(
+            call_tool.call_args_list[1].args,
+            ("get_job_requirements", {"job_id": 7}),
+        )
+
     def test_tool_log_records_mcp_source(self) -> None:
         tool = ToolDefinition(
             tool_name="audit_test",
