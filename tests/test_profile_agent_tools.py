@@ -4,6 +4,8 @@ from unittest.mock import patch
 from backend.errors import AppError
 from backend.tools import profile_tools
 from backend.services import study_plan_service
+from backend.routers import profile_router
+from backend.schemas.user_profile_schema import StudyPlanResult
 
 
 class ProfileAgentToolTests(unittest.TestCase):
@@ -117,6 +119,34 @@ class StudyPlanServiceTests(unittest.TestCase):
         self.assertEqual(result["focus_skills"], ["RAG", "Python", "Agent"])
         self.assertEqual(result["plan_items"][0]["target_job_count"], 3)
         self.assertEqual(result["plan_items"][0]["matched_job_examples"], ["公司A·岗位A", "公司B·岗位B"])
+
+    def test_study_plan_route_uses_current_login_identity(self) -> None:
+        current_user = {"user_id": 7, "role": "user"}
+        payload = {
+            "user_id": "resume-7",
+            "total_jobs": 3,
+            "matched_jobs": 2,
+            "focus_skills": ["RAG"],
+            "plan_items": [
+                {
+                    "priority": 1,
+                    "skill_name": "RAG",
+                    "target_job_count": 3,
+                    "matched_job_examples": ["公司A·岗位A"],
+                    "action": "完成一个可展示的 RAG 项目改造。",
+                }
+            ],
+            "message": "已生成学习优先级。",
+        }
+        with patch(
+            "backend.routers.profile_router.study_plan_service.generate_study_plan_for_current_user",
+            return_value=payload,
+        ) as generate_plan:
+            result = profile_router.generate_study_plan(current_user=current_user)
+
+        validated = StudyPlanResult(**result)
+        self.assertEqual(validated.plan_items[0].skill_name, "RAG")
+        generate_plan.assert_called_once_with(current_user)
 
 
 if __name__ == "__main__":

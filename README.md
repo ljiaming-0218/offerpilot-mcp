@@ -43,6 +43,7 @@ OfferPilot MCP 是一个面向 AI、软件开发和技术岗位求职者的智�
 - 技能写入 `skills` 和 `job_skills`。
 - 重复抽取会同步替换岗位技能关联，避免保留过期标签。
 - 结构化要求写入 `jobs.requirement_json`。
+- 管理员批量抽取时按岗位逐条显示进度，并区分“已提取技能”“仅岗位要求”和“失败”；每条完成后即时更新前端状态，批次结束后再与数据库校准。
 
 ### 用户画像
 
@@ -55,6 +56,7 @@ OfferPilot MCP 是一个面向 AI、软件开发和技术岗位求职者的智�
 
 - 根据用户画像和岗位要求计算匹配结果。
 - 展示已满足技能、缺失技能、匹配分数和补充建议。
+- 普通用户可在匹配中心直接生成学习计划，查看技能优先级、涉及岗位数量、真实岗位示例和行动建议。
 
 ### Text2SQL
 
@@ -302,7 +304,7 @@ python -m unittest discover -s tests -q
 python -m eval.run_evaluations --write-report
 ```
 
-当前验证结果为75项自动化测试通过、84/84项离线确定性评估通过。其中 SQL Guard 覆盖25类常见只读查询和24类危险或无效查询；其余评估覆盖规则路由、Text2SQL 规则兜底、通用 HTML 解析器、Skill 资产完整性和 MCP Tool/Resource 注册。详细结果见 [`eval/latest_report.md`](eval/latest_report.md)。该结果不代表线上数据完整性或 LLM 生成质量。
+当前验证结果为76项自动化测试通过、84/84项离线确定性评估通过。其中 SQL Guard 覆盖25类常见只读查询和24类危险或无效查询；其余评估覆盖规则路由、Text2SQL 规则兜底、通用 HTML 解析器、Skill 资产完整性和 MCP Tool/Resource 注册。详细结果见 [`eval/latest_report.md`](eval/latest_report.md)。该结果不代表线上数据完整性或 LLM 生成质量。
 
 接口联调建议顺序：
 
@@ -313,9 +315,10 @@ python -m eval.run_evaluations --write-report
 5. `POST /jobs/extract-requirements/batch`
 6. `POST /profile/parse-resume`
 7. `GET /profile/{user_id}/matches`
-8. `POST /query/text2sql`
-9. `POST /agent/run`
-10. `GET /agent/traces`
+8. `POST /profile/study-plan`
+9. `POST /query/text2sql`
+10. `POST /agent/run`
+11. `GET /agent/traces`
 
 MCP Inspector 验证：
 
@@ -355,7 +358,7 @@ Token 只能放在 `Authorization` Header，不要拼接到 URL。`mcp dev` 直�
 
 仍需完善：
 
-- 当前已有75项自动化测试和84项离线确定性评估，但尚未统计代码覆盖率，也未建立固定模型下的在线 LLM 评估基线。
+- 当前已有76项自动化测试和84项离线确定性评估，但尚未统计代码覆盖率，也未建立固定模型下的在线 LLM 评估基线。
 - MCP 当前暴露只读岗位工具和技能目录 Resource，尚未实现 Prompts。
 - 远程 MCP 已有静态 Bearer Token 和单实例内存限流，但尚未实现标准 OAuth 2.1、scope 和多实例共享限流。
 - Skill Loader 已能发现7个本地 Skill，并约束允许工具和质量检查；Planner 的执行形状仍按 Skill 硬编码，尚未成为完全由 Skill 文件驱动的通用执行器。

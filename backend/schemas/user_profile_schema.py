@@ -86,3 +86,20 @@ class ProfileMatchResult(BaseModel):
     matched_jobs: int
     user_skills: list[str]
     matches: list[JobMatchItem]
+
+
+class StudyPlanItem(BaseModel):
+    priority: int
+    skill_name: str
+    target_job_count: int
+    matched_job_examples: list[str] = Field(default_factory=list)
+    action: str
+
+
+class StudyPlanResult(BaseModel):
+    user_id: str
+    total_jobs: int
+    matched_jobs: int
+    focus_skills: list[str] = Field(default_factory=list)
+    plan_items: list[StudyPlanItem] = Field(default_factory=list)
+    message: str

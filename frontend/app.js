@@ -813,6 +813,64 @@ async function runProfileMatch() {
   }
 }
 
+async function runStudyPlan() {
+  const button = $("generate-study-plan");
+  setBusy(button, true, "生成中", "生成学习计划");
+  $("study-plan-result").innerHTML = renderEmpty("正在统计真实岗位中的能力缺口...");
+
+  try {
+    const result = await api("/profile/study-plan", { method: "POST" });
+    renderStudyPlan(result);
+    showToast("学习计划已生成");
+  } catch (error) {
+    $("study-plan-result").innerHTML = renderEmpty(error.message);
+    showToast(error.message);
+  } finally {
+    setBusy(button, false, "生成中", "生成学习计划");
+  }
+}
+
+function renderStudyPlan(result) {
+  const items = result.plan_items || [];
+  if (!items.length) {
+    $("study-plan-result").innerHTML = `
+      <div class="study-plan-empty">
+        ${statusPill("暂无明确缺口", "neutral")}
+        <p>${escapeHtml(result.message)}</p>
+        <small>已分析 ${escapeHtml(result.total_jobs)} 个具有技能标签的真实岗位。</small>
+      </div>
+    `;
+    return;
+  }
+
+  $("study-plan-result").innerHTML = `
+    <div class="study-plan-summary">
+      <div>
+        <strong>优先补齐 ${escapeHtml(items.length)} 项能力</strong>
+        <p>${escapeHtml(result.message)}</p>
+      </div>
+      <span>${escapeHtml(result.total_jobs)} 个岗位样本</span>
+    </div>
+    <div class="study-plan-list">
+      ${items.map((item) => `
+        <article class="study-plan-item">
+          <div class="study-plan-priority">${escapeHtml(item.priority)}</div>
+          <div>
+            <div class="study-plan-title">
+              <strong>${escapeHtml(item.skill_name)}</strong>
+              <span>${escapeHtml(item.target_job_count)} 个岗位涉及</span>
+            </div>
+            <p>${escapeHtml(item.action)}</p>
+            <div class="tag-list">
+              ${(item.matched_job_examples || []).map((job) => `<span class="tag tag-compact">${escapeHtml(job)}</span>`).join("") || '<span class="muted">暂无岗位示例</span>'}
+            </div>
+          </div>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
 async function runMockInterview() {
   const userId = $("interview-user-id").value.trim() || state.profile?.user_id || "";
   const jobId = Number($("interview-job-id").value);
@@ -1215,7 +1273,13 @@ function findToolOutput(result) {
 }
 
 function renderQueryResult(toolOutput) {
-  renderStructuredResult(toolOutput);
+  const isStructuredOnly = renderStructuredResult(toolOutput);
+  if (isStructuredOnly) {
+    $("result-head").innerHTML = "";
+    $("result-body").innerHTML = "";
+    $("result-table-card").classList.add("is-hidden");
+    return;
+  }
 
   const sql = toolOutput?.sql || "-- no sql";
   const rows = toolOutput?.rows || [];
@@ -1253,7 +1317,30 @@ function renderStructuredResult(toolOutput) {
 
   if (!toolOutput) {
     target.innerHTML = renderEmpty("暂无结构化输出。");
-    return;
+    return false;
+  }
+
+  if (Array.isArray(toolOutput.plan_items)) {
+    target.innerHTML = `
+      <div class="structured-card">
+        <strong>学习计划</strong>
+        <p class="muted">${escapeHtml(toolOutput.message || "")}</p>
+        <div class="study-plan-list">
+          ${(toolOutput.plan_items || []).map((item) => `
+            <div class="study-plan-item compact">
+              <div class="study-plan-priority">${escapeHtml(item.priority)}</div>
+              <div>
+                <strong>${escapeHtml(item.skill_name)}</strong>
+                <p>${escapeHtml(item.action)}</p>
+              </div>
+            </div>
+          `).join("") || renderEmpty("暂无明确技能缺口。")}
+        </div>
+      </div>
+    `;
+    $("sql-output").textContent = "-- 学习计划不需要生成 SQL";
+    $("rows-summary").textContent = `生成 ${toolOutput.plan_items.length} 项学习优先级`;
+    return true;
   }
 
   if (Array.isArray(toolOutput.skills)) {
@@ -1268,7 +1355,7 @@ function renderStructuredResult(toolOutput) {
     `;
     $("sql-output").textContent = "-- JD 分析不需要生成 SQL";
     $("rows-summary").textContent = `抽取 ${toolOutput.skills.length} 个技能标签`;
-    return;
+    return true;
   }
 
   if (toolOutput.status && toolOutput.source_url) {
@@ -1283,10 +1370,11 @@ function renderStructuredResult(toolOutput) {
     `;
     $("sql-output").textContent = "-- 岗位采集不需要生成 SQL";
     $("rows-summary").textContent = "岗位采集结果";
-    return;
+    return true;
   }
 
   target.innerHTML = "";
+  return false;
 }
 
 function renderRequirementInline(requirement) {
@@ -1351,31 +1439,172 @@ async function runAgent() {
 }
 
 async function runBatchExtract() {
-  const button = $("batch-extract");
-  setBusy(button, true, "抽取中", "批量抽取技能");
-  try {
-    const result = await api("/jobs/extract-skills/batch?limit=20", { method: "POST" });
-    showToast(`批量抽取完成：成功 ${result.success_count}，失败 ${result.failed_count}`);
-    await Promise.all([loadJobs(), loadSkills(), loadLogs()]);
-  } catch (error) {
-    showToast(error.message);
-  } finally {
-    setBusy(button, false, "抽取中", "批量抽取技能");
-  }
+  await runObservableExtractionBatch("skills");
 }
 
 async function runBatchRequirementExtract() {
-  const button = $("batch-requirements");
-  setBusy(button, true, "补全中", "批量补全岗位要求");
-  try {
-    const result = await api("/jobs/extract-requirements/batch?limit=20", { method: "POST" });
-    showToast(`岗位要求补全完成：成功 ${result.success_count}，失败 ${result.failed_count}`);
-    await Promise.all([loadJobs(), loadSkills(), loadLogs()]);
-  } catch (error) {
-    showToast(error.message);
-  } finally {
-    setBusy(button, false, "补全中", "批量补全岗位要求");
+  await runObservableExtractionBatch("requirements");
+}
+
+async function runObservableExtractionBatch(mode) {
+  const isSkillBatch = mode === "skills";
+  const activeButton = $(isSkillBatch ? "batch-extract" : "batch-requirements");
+  const otherButton = $(isSkillBatch ? "batch-requirements" : "batch-extract");
+  const idleText = isSkillBatch ? "批量抽取技能" : "批量补全岗位要求";
+  const busyText = isSkillBatch ? "抽取中" : "补全中";
+
+  if (!state.jobs.length) await loadJobs();
+  const candidates = state.jobs
+    .filter((job) => isSkillBatch
+      ? Number(job.skill_count || 0) === 0
+      : job.extraction_status !== "completed")
+    .slice(0, 20);
+
+  const progress = {
+    mode,
+    total: candidates.length,
+    completed: 0,
+    skillSuccess: 0,
+    requirementOnly: 0,
+    failed: 0,
+    currentTitle: "",
+    done: candidates.length === 0,
+    results: [],
+  };
+
+  renderBatchProgress(progress);
+  if (!candidates.length) {
+    showToast(isSkillBatch ? "当前没有待抽取技能的岗位" : "当前没有待补全要求的岗位");
+    return;
   }
+
+  setBusy(activeButton, true, busyText, idleText);
+  otherButton.disabled = true;
+  try {
+    for (const job of candidates) {
+      progress.currentTitle = job.title;
+      renderBatchProgress(progress);
+      try {
+        const result = await api(`/jobs/${job.job_id}/extract-skills`, { method: "POST" });
+        const skillNames = (result.skills || []).map((skill) => skill.skill_name);
+        if (skillNames.length) {
+          progress.skillSuccess += 1;
+        } else {
+          progress.requirementOnly += 1;
+        }
+        progress.results.unshift({
+          status: skillNames.length ? "skills" : "requirements",
+          jobId: job.job_id,
+          title: job.title,
+          detail: skillNames.length ? skillNames.join("、") : "仅识别到学历、专业、语言或职责等岗位要求",
+        });
+        updateJobExtractionSnapshot(job.job_id, result);
+        if (isSkillBatch) updateSkillLibrarySnapshot(result.skills || []);
+        renderJobs();
+        renderDashboard();
+        renderSkills();
+      } catch (error) {
+        progress.failed += 1;
+        progress.results.unshift({
+          status: "failed",
+          jobId: job.job_id,
+          title: job.title,
+          detail: error.message,
+        });
+      }
+      progress.completed += 1;
+      renderBatchProgress(progress);
+    }
+  } finally {
+    progress.currentTitle = "";
+    progress.done = true;
+    await Promise.all([loadJobs(), loadSkills(), loadLogs()]).catch(() => undefined);
+    renderBatchProgress(progress);
+    setBusy(activeButton, false, busyText, idleText);
+    otherButton.disabled = false;
+  }
+
+  showToast(`批处理完成：技能 ${progress.skillSuccess}，仅岗位要求 ${progress.requirementOnly}，失败 ${progress.failed}`);
+}
+
+function updateJobExtractionSnapshot(jobId, result) {
+  const job = state.jobs.find((item) => Number(item.job_id) === Number(jobId));
+  if (!job) return;
+
+  job.skill_names = (result.skills || []).map((skill) => skill.skill_name);
+  job.skill_count = job.skill_names.length;
+  job.requirement_highlights = getRequirementHighlights(result.requirement);
+  job.extraction_status = result.requirement
+    ? "completed"
+    : job.skill_count
+      ? "skills_only"
+      : "pending";
+}
+
+function updateSkillLibrarySnapshot(skills) {
+  for (const skill of skills) {
+    const existing = state.skills.find(
+      (item) => item.skill_name.toLowerCase() === skill.skill_name.toLowerCase()
+    );
+    if (existing) {
+      existing.job_count = Number(existing.job_count || 0) + 1;
+      continue;
+    }
+    state.skills.push({
+      skill_id: null,
+      skill_name: skill.skill_name,
+      category: skill.category,
+      job_count: 1,
+    });
+  }
+}
+
+function getRequirementHighlights(requirement) {
+  if (!requirement) return [];
+  const values = [
+    ...(requirement.education_requirements || []),
+    ...(requirement.language_requirements || []),
+    ...(requirement.major_requirements || []),
+    ...(requirement.experience_requirements || []),
+  ];
+  return [...new Set(values)].slice(0, 4);
+}
+
+function renderBatchProgress(progress) {
+  const target = $("batch-progress");
+  target.classList.remove("is-hidden");
+  const percent = progress.total ? Math.round(progress.completed / progress.total * 100) : 0;
+  const title = progress.done
+    ? progress.total ? "批处理完成" : "没有待处理岗位"
+    : `正在处理：${progress.currentTitle || "准备任务"}`;
+
+  target.innerHTML = `
+    <div class="batch-progress-head">
+      <div>
+        <strong>${escapeHtml(title)}</strong>
+        <span>${escapeHtml(progress.completed)} / ${escapeHtml(progress.total)}</span>
+      </div>
+      ${statusPill(progress.done ? "已完成" : "运行中", progress.done ? "success" : "warning")}
+    </div>
+    <progress max="${escapeHtml(progress.total || 1)}" value="${escapeHtml(progress.completed)}"></progress>
+    <div class="batch-counters">
+      <span>技能标签 <strong>${escapeHtml(progress.skillSuccess)}</strong></span>
+      <span>仅岗位要求 <strong>${escapeHtml(progress.requirementOnly)}</strong></span>
+      <span>失败 <strong>${escapeHtml(progress.failed)}</strong></span>
+      <span>进度 <strong>${escapeHtml(percent)}%</strong></span>
+    </div>
+    <div class="batch-result-list">
+      ${progress.results.map((item) => `
+        <div class="batch-result-item">
+          ${statusPill(item.status === "failed" ? "失败" : item.status === "skills" ? "已提取技能" : "仅岗位要求", item.status === "failed" ? "danger" : item.status === "skills" ? "success" : "warning")}
+          <div>
+            <strong>#${escapeHtml(item.jobId)} ${escapeHtml(item.title)}</strong>
+            <p>${escapeHtml(item.detail)}</p>
+          </div>
+        </div>
+      `).join("") || '<span class="muted">等待第一条处理结果。</span>'}
+    </div>
+  `;
 }
 
 function setCrawlerState(type, title, text) {
@@ -1605,6 +1834,7 @@ function bindEvents() {
   $("load-profile").addEventListener("click", loadProfile);
   $("parse-resume").addEventListener("click", parseResume);
   $("run-match").addEventListener("click", runProfileMatch);
+  $("generate-study-plan").addEventListener("click", runStudyPlan);
   $("run-interview").addEventListener("click", runMockInterview);
   $("run-evaluation").addEventListener("click", runAnswerEvaluation);
   $("drawer-close").addEventListener("click", closeJobDrawer);

@@ -55,6 +55,7 @@ class AuthorizationDependencyTests(unittest.TestCase):
             ("/agent/run", "POST"): get_current_user,
             ("/agent/traces", "GET"): get_admin_user,
             ("/profile/parse-resume", "POST"): get_current_user,
+            ("/profile/study-plan", "POST"): get_current_user,
             ("/interview/mock", "POST"): get_current_user,
             ("/interview/evaluate", "POST"): get_current_user,
         }

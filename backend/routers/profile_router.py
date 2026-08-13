@@ -4,10 +4,11 @@ from backend.dependencies import get_current_user
 from backend.schemas.user_profile_schema import (
     ProfileMatchResult,
     ResumeParseResult,
+    StudyPlanResult,
     UserProfileRead,
     UserProfileUpsert,
 )
-from backend.services import profile_match_service, resume_parse_service
+from backend.services import profile_match_service, resume_parse_service, study_plan_service
 
 
 router = APIRouter(prefix="/profile", tags=["profile"])
@@ -30,6 +31,11 @@ async def parse_resume(
 ) -> dict:
     content = await file.read()
     return resume_parse_service.parse_resume(file.filename or "resume", content)
+
+
+@router.post("/study-plan", response_model=StudyPlanResult)
+def generate_study_plan(current_user: dict = Depends(get_current_user)) -> dict:
+    return study_plan_service.generate_study_plan_for_current_user(current_user)
 
 
 @router.get("/{user_id}", response_model=UserProfileRead)
