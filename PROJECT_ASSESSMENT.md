@@ -17,14 +17,14 @@ OfferPilot 当前已达到可用于作品集、项目答辩和 AI 应用开发�
 | Agent 工程化 | 80/100 | 7个 Skill、Router、Planner、Executor、工具白名单、Trace 和规则回退完整 |
 | 后端与安全 | 80/100 | FastAPI/MySQL 分层、用户归属、SSRF 防护、SQL AST Guard 和错误处理较完整 |
 | 数据质量 | 62/100 | 真实岗位已入库，但部分正文含导航噪声，部分岗位要求和技能尚未抽取 |
-| 测试与评估 | 78/100 | 76项测试和84项离线评估通过；尚缺覆盖率、固定模型在线评估和人工业务评分结果 |
+| 测试与评估 | 78/100 | 80项测试和84项离线评估通过；尚缺覆盖率、固定模型在线评估和人工业务评分结果 |
 | 生产准备度 | 58/100 | 已部署 Render + TiDB，但仍是静态 Token、单实例限流，缺少分页、共享限流和生产监控 |
 
 综合判断：约80/100，属于完成度较高的实习作品集项目，但距离生产级系统仍有明确边界。
 
 ## 已验证证据
 
-- `python -m unittest discover -s tests -q`：76项测试通过。
+- `python -m unittest discover -s tests -q`：80项测试通过。
 - `python -m eval.run_evaluations --write-report`：84/84项确定性评估通过，其中 SQL Guard 覆盖49条安全与危险边界用例。
 - `node --check frontend/app.js`：前端 JavaScript 语法通过。
 - Render `/health`：生产环境、TiDB 和 LLM 配置可用。

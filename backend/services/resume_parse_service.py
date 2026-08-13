@@ -71,7 +71,7 @@ def parse_resume(filename: str, content: bytes) -> dict:
     except AppError as exc:
         profile = fallback_profile
         parse_method = "rule_fallback"
-        warnings.append(f"{exc.error}: {exc.message}")
+        warnings.append(_build_llm_fallback_warning(exc))
 
     return {
         "profile": profile,
@@ -84,6 +84,18 @@ def parse_resume(filename: str, content: bytes) -> dict:
             "warnings": warnings,
         },
     }
+
+
+def _build_llm_fallback_warning(exc: AppError) -> str:
+    messages = {
+        "LLM_RATE_LIMITED": "大模型免费额度已用尽或请求过于频繁，已使用规则解析。",
+        "LLM_AUTH_FAILED": "大模型 API Key 无效或无权访问当前模型，已使用规则解析。",
+        "LLM_PAYMENT_REQUIRED": "大模型账户余额不足，已使用规则解析。",
+        "LLM_TIMEOUT": "大模型响应超时，已使用规则解析。",
+        "LLM_UNAVAILABLE": "暂时无法连接大模型服务，已使用规则解析。",
+        "LLM_NOT_CONFIGURED": "未配置大模型，已使用规则解析。",
+    }
+    return messages.get(exc.error, f"{exc.message}，已使用规则解析。")
 
 
 def _parse_resume_by_rules(text: str) -> dict:
