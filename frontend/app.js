@@ -405,6 +405,8 @@ function getFilteredJobs() {
       job.city,
       job.job_type,
       job.description_preview,
+      ...(job.skill_names || []),
+      ...(job.requirement_highlights || []),
     ].join(" ").toLowerCase();
     return (!keyword || haystack.includes(keyword))
       && (city === "全部" || job.city === city)
@@ -418,7 +420,7 @@ function renderJobs() {
   const body = $("job-table-body");
 
   if (!jobs.length) {
-    body.innerHTML = `<tr><td colspan="7">${renderEmpty("没有匹配的岗位数据。")}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="8">${renderEmpty("没有匹配的岗位数据。")}</td></tr>`;
     return;
   }
 
@@ -428,16 +430,42 @@ function renderJobs() {
       <td>${escapeHtml(formatValue(job.company_name))}</td>
       <td>${escapeHtml(formatValue(job.city, "未知"))}</td>
       <td>${escapeHtml(formatValue(job.job_type, "未标注"))}</td>
+      <td>${renderJobSkillSummary(job)}</td>
       <td>${job.source_url ? `<a class="link" href="${escapeHtml(job.source_url)}" target="_blank" rel="noreferrer">来源链接</a>` : "--"}</td>
       <td>${escapeHtml(formatDate(job.created_at))}</td>
       <td>
         <div class="row-actions">
           <button class="button button-ghost" data-job-view="${job.job_id}" type="button">详情</button>
-          <button class="button button-secondary" data-job-extract="${job.job_id}" type="button">提取技能</button>
+          <button class="button button-secondary" data-job-extract="${job.job_id}" type="button">${job.extraction_status === "pending" ? "提取技能" : "重新提取"}</button>
         </div>
       </td>
     </tr>
   `).join("");
+}
+
+function renderJobSkillSummary(job) {
+  const labels = {
+    completed: ["已提取", "success"],
+    skills_only: ["已有技能", "warning"],
+    pending: ["未提取", "neutral"],
+  };
+  const [label, type] = labels[job.extraction_status] || labels.pending;
+  const visibleSkills = (job.skill_names || []).slice(0, 4);
+  const remaining = Math.max((job.skill_count || 0) - visibleSkills.length, 0);
+  const requirements = (job.requirement_highlights || []).slice(0, 2);
+
+  return `
+    <div class="job-skill-summary">
+      ${statusPill(label, type)}
+      ${visibleSkills.length ? `
+        <div class="job-skill-tags">
+          ${visibleSkills.map((skill) => `<span class="tag tag-compact">${escapeHtml(skill)}</span>`).join("")}
+          ${remaining ? `<span class="muted">+${remaining}</span>` : ""}
+        </div>
+      ` : `<span class="muted">暂无技能标签</span>`}
+      ${requirements.length ? `<small>${escapeHtml(requirements.join(" · "))}</small>` : ""}
+    </div>
+  `;
 }
 
 async function openJobDrawer(jobId) {
@@ -463,6 +491,8 @@ function closeJobDrawer() {
 }
 
 function renderJobDetail(job, extracted = null) {
+  const displayedSkills = extracted?.skills || job.skills || [];
+  const hasExtractedData = displayedSkills.length > 0 || Boolean(job.requirement_json);
   $("drawer-body").innerHTML = `
     <div class="detail-stack">
       <div class="detail-block">
@@ -483,10 +513,10 @@ function renderJobDetail(job, extracted = null) {
       <div class="detail-block">
         <h3>技能抽取</h3>
         <div class="row-actions">
-          <button class="button button-primary" data-drawer-extract="${job.job_id}" type="button">提取当前岗位技能</button>
+          <button class="button button-primary" data-drawer-extract="${job.job_id}" type="button">${hasExtractedData ? "重新提取岗位技能" : "提取当前岗位技能"}</button>
         </div>
         <div class="tag-list" id="drawer-skill-result">
-          ${extracted ? renderExtractedSkillTags(extracted.skills) : `<span class="muted">当前岗位详情接口暂不返回已关联技能，可通过提取按钮验证写库。</span>`}
+          ${displayedSkills.length ? renderExtractedSkillTags(displayedSkills) : `<span class="muted">该岗位尚未提取技能。</span>`}
         </div>
         ${extracted ? `
           <p class="muted">抽取方式：${escapeHtml(formatExtractionMode(extracted.generation_mode))}</p>
@@ -563,18 +593,19 @@ function renderSkillEvidence(skills = []) {
 }
 
 async function extractJobSkills(jobId, button = null) {
-  if (button) setBusy(button, true, "抽取中", "提取技能");
+  const idleText = button?.textContent || "提取技能";
+  if (button) setBusy(button, true, "抽取中", idleText);
   try {
     const result = await api(`/jobs/${jobId}/extract-skills`, { method: "POST" });
     showToast(`技能抽取完成：${result.skills.length} 个标签`);
-    await Promise.all([loadSkills(), loadLogs()]);
+    await Promise.all([loadJobs(), loadSkills(), loadLogs()]);
     if (state.selectedJob?.job_id === Number(jobId)) {
       renderJobDetail(state.selectedJob, result);
     }
   } catch (error) {
     showToast(error.message);
   } finally {
-    if (button) setBusy(button, false, "抽取中", "提取技能");
+    if (button) setBusy(button, false, "抽取中", idleText);
   }
 }
 

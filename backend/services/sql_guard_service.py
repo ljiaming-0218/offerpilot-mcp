@@ -5,6 +5,7 @@ from sqlglot.errors import ParseError
 
 
 MAX_RESULT_ROWS = 100
+MAX_RESULT_OFFSET = 10_000
 
 ALLOWED_COLUMNS = {
     "companies": {
@@ -59,6 +60,9 @@ def check_sql_safety(sql: str) -> dict:
     if expression.args.get("with_") is not None:
         return _unsafe(sql=normalized_sql, reason="不允许使用 WITH 查询")
 
+    if expression.args.get("into") is not None:
+        return _unsafe(sql=normalized_sql, reason="不允许使用 SELECT INTO 写入文件或表")
+
     if expression.find(exp.Subquery) is not None:
         return _unsafe(sql=normalized_sql, reason="不允许使用子查询")
 
@@ -79,6 +83,10 @@ def check_sql_safety(sql: str) -> dict:
     function_error = _validate_functions(expression)
     if function_error:
         return _unsafe(sql=normalized_sql, reason=function_error)
+
+    pagination_error = _validate_pagination(expression)
+    if pagination_error:
+        return _unsafe(sql=normalized_sql, reason=pagination_error)
 
     safe_expression = _apply_limit(expression)
     return {
@@ -107,7 +115,7 @@ def _validate_columns(expression: exp.Select) -> str | None:
         table.alias_or_name.lower(): table.name.lower()
         for table in expression.find_all(exp.Table)
     }
-    all_columns = set().union(*ALLOWED_COLUMNS.values())
+    referenced_tables = set(alias_to_table.values())
     select_aliases = {
         projection.alias.lower()
         for projection in expression.expressions
@@ -116,7 +124,12 @@ def _validate_columns(expression: exp.Select) -> str | None:
 
     for column in expression.find_all(exp.Column):
         column_name = column.name.lower()
+        if column_name == "*" and not column.table:
+            continue
+
         if column_name == "*":
+            if column.table.lower() not in alias_to_table:
+                return f"无法识别通配符所属表：{column.table}"
             continue
 
         if column.table:
@@ -125,21 +138,41 @@ def _validate_columns(expression: exp.Select) -> str | None:
                 return f"无法识别字段所属表：{column.table}"
             if column_name not in ALLOWED_COLUMNS[table_name]:
                 return f"字段不属于允许的表：{column.sql(dialect='mysql')}"
-        elif column_name not in all_columns and column_name not in select_aliases:
-            return f"不允许查询字段：{column_name}"
+        elif column_name not in select_aliases:
+            candidate_tables = [
+                table_name
+                for table_name in referenced_tables
+                if column_name in ALLOWED_COLUMNS[table_name]
+            ]
+            if not candidate_tables:
+                return f"字段不属于当前查询的数据表：{column_name}"
+            if len(candidate_tables) > 1:
+                return f"字段存在歧义，请使用表别名限定：{column_name}"
     return None
 
 
 def _validate_functions(expression: exp.Select) -> str | None:
     for function in expression.find_all(exp.Func):
-        if isinstance(function, (exp.And, exp.Or)):
+        rendered_function = function.sql(dialect="mysql")
+        match = re.match(r"^\s*([A-Z_][A-Z0-9_]*)\s*\(", rendered_function, flags=re.IGNORECASE)
+        if match is None:
             continue
-        if isinstance(function, exp.Anonymous):
-            function_name = function.name.lower()
-        else:
-            function_name = function.sql_name().lower()
+        function_name = match.group(1).lower()
         if function_name not in ALLOWED_FUNCTIONS:
             return f"不允许使用 SQL 函数：{function_name}"
+    return None
+
+
+def _validate_pagination(expression: exp.Select) -> str | None:
+    offset = expression.args.get("offset")
+    if offset is None:
+        return None
+
+    offset_value = offset.expression
+    if not isinstance(offset_value, exp.Literal) or not offset_value.is_int:
+        return "OFFSET 必须是非负整数"
+    if int(offset_value.name) > MAX_RESULT_OFFSET:
+        return f"OFFSET 不能超过 {MAX_RESULT_OFFSET}"
     return None
 
 

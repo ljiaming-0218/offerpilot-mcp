@@ -47,6 +47,45 @@ class SqlGuardAstTests(unittest.TestCase):
 
         self.assertTrue(result["safe"])
 
+    def test_allows_common_readonly_filters_and_date_functions(self) -> None:
+        queries = [
+            "SELECT job_id FROM jobs WHERE city = '北京' OR city = '上海'",
+            "SELECT job_id FROM jobs WHERE city IN ('北京', '上海')",
+            "SELECT job_id FROM jobs WHERE city IS NOT NULL",
+            "SELECT YEAR(created_at), MONTH(created_at), DATE(created_at) FROM jobs",
+        ]
+
+        for sql in queries:
+            with self.subTest(sql=sql):
+                result = sql_guard_service.check_sql_safety(sql)
+                self.assertTrue(result["safe"], result["reason"])
+
+    def test_blocks_invalid_unqualified_columns_and_unknown_wildcard_aliases(self) -> None:
+        invalid_column = sql_guard_service.check_sql_safety(
+            "SELECT company_name FROM jobs"
+        )
+        ambiguous_column = sql_guard_service.check_sql_safety(
+            "SELECT city FROM jobs j JOIN companies c ON c.company_id = j.company_id"
+        )
+        invalid_wildcard = sql_guard_service.check_sql_safety(
+            "SELECT unknown_alias.* FROM jobs j"
+        )
+
+        self.assertFalse(invalid_column["safe"])
+        self.assertFalse(ambiguous_column["safe"])
+        self.assertFalse(invalid_wildcard["safe"])
+
+    def test_blocks_select_into_and_excessive_offset(self) -> None:
+        into_result = sql_guard_service.check_sql_safety(
+            "SELECT job_id INTO OUTFILE '/tmp/jobs.txt' FROM jobs"
+        )
+        offset_result = sql_guard_service.check_sql_safety(
+            "SELECT job_id FROM jobs LIMIT 10 OFFSET 10000001"
+        )
+
+        self.assertFalse(into_result["safe"])
+        self.assertFalse(offset_result["safe"])
+
     def test_clamps_large_limit(self) -> None:
         result = sql_guard_service.check_sql_safety("SELECT job_id FROM jobs LIMIT 500")
 

@@ -1,7 +1,7 @@
 {
   "scope": "offline_deterministic",
-  "passed": 50,
-  "total": 50,
+  "passed": 84,
+  "total": 84,
   "rate": 1.0,
   "metrics": [
     {
@@ -13,8 +13,8 @@
     },
     {
       "name": "sql_guard",
-      "passed": 15,
-      "total": 15,
+      "passed": 49,
+      "total": 49,
       "rate": 1.0,
       "failures": []
     },

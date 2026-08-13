@@ -32,6 +32,7 @@ def get_job(job_id: int) -> dict:
             status_code=404,
         )
 
+    job["skills"] = skill_repository.list_skills_for_job(job_id)
     return job
 
 
@@ -43,7 +44,7 @@ def get_job_requirements(job_id: int) -> dict:
         "title": job["title"],
         "city": job["city"],
         "job_type": job["job_type"],
-        "skills": skill_repository.list_skills_for_job(job_id),
+        "skills": job["skills"],
         "requirements": job["requirement_json"],
     }
 

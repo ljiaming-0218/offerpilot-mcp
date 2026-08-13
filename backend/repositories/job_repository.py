@@ -58,16 +58,65 @@ def list_jobs() -> list[dict[str, Any]]:
                     j.city,
                     j.job_type,
                     j.source_url,
+                    j.requirement_json,
+                    COALESCE(skill_summary.skill_count, 0) AS skill_count,
+                    skill_summary.skill_names,
                     LEFT(j.description, 120) AS description_preview,
                     CAST(j.created_at AS CHAR) AS created_at
                 FROM jobs j
                 JOIN companies c ON c.company_id = j.company_id
+                LEFT JOIN (
+                    SELECT
+                        js.job_id,
+                        COUNT(DISTINCT js.skill_id) AS skill_count,
+                        GROUP_CONCAT(
+                            DISTINCT s.skill_name
+                            ORDER BY s.skill_name
+                            SEPARATOR '||'
+                        ) AS skill_names
+                    FROM job_skills js
+                    JOIN skills s ON s.skill_id = js.skill_id
+                    GROUP BY js.job_id
+                ) skill_summary ON skill_summary.job_id = j.job_id
                 ORDER BY j.created_at DESC, j.job_id DESC
                 """
             )
         ).mappings().all()
 
-    return [dict(row) for row in rows]
+    return [_build_job_list_item(dict(row)) for row in rows]
+
+
+def _build_job_list_item(row: dict[str, Any]) -> dict[str, Any]:
+    requirement = _load_requirement(row.pop("requirement_json", None))
+    raw_skill_names = row.pop("skill_names", None)
+    skill_names = raw_skill_names.split("||") if raw_skill_names else []
+    skill_count = int(row.get("skill_count") or 0)
+
+    row["skill_count"] = skill_count
+    row["skill_names"] = skill_names
+    row["requirement_highlights"] = _requirement_highlights(requirement)
+    if requirement is not None:
+        row["extraction_status"] = "completed"
+    elif skill_count:
+        row["extraction_status"] = "skills_only"
+    else:
+        row["extraction_status"] = "pending"
+    return row
+
+
+def _requirement_highlights(requirement: dict[str, Any] | None) -> list[str]:
+    if not requirement:
+        return []
+
+    highlights = []
+    for field in (
+        "education_requirements",
+        "language_requirements",
+        "major_requirements",
+        "experience_requirements",
+    ):
+        highlights.extend(requirement.get(field) or [])
+    return list(dict.fromkeys(highlights))[:4]
 
 
 def _get_job_by_id_with_connection(connection, job_id: int) -> dict[str, Any] | None:

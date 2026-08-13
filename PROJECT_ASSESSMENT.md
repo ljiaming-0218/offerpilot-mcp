@@ -17,15 +17,15 @@ OfferPilot 当前已达到可用于作品集、项目答辩和 AI 应用开发�
 | Agent 工程化 | 80/100 | 7个 Skill、Router、Planner、Executor、工具白名单、Trace 和规则回退完整 |
 | 后端与安全 | 80/100 | FastAPI/MySQL 分层、用户归属、SSRF 防护、SQL AST Guard 和错误处理较完整 |
 | 数据质量 | 62/100 | 真实岗位已入库，但部分正文含导航噪声，部分岗位要求和技能尚未抽取 |
-| 测试与评估 | 76/100 | 70项测试和50项离线评估通过；尚缺覆盖率、固定模型在线评估和人工业务评分结果 |
+| 测试与评估 | 78/100 | 75项测试和84项离线评估通过；尚缺覆盖率、固定模型在线评估和人工业务评分结果 |
 | 生产准备度 | 58/100 | 已部署 Render + TiDB，但仍是静态 Token、单实例限流，缺少分页、共享限流和生产监控 |
 
 综合判断：约80/100，属于完成度较高的实习作品集项目，但距离生产级系统仍有明确边界。
 
 ## 已验证证据
 
-- `python -m unittest discover -s tests -q`：70项测试通过。
-- `python -m eval.run_evaluations --write-report`：50/50项确定性评估通过。
+- `python -m unittest discover -s tests -q`：75项测试通过。
+- `python -m eval.run_evaluations --write-report`：84/84项确定性评估通过，其中 SQL Guard 覆盖49条安全与危险边界用例。
 - `node --check frontend/app.js`：前端 JavaScript 语法通过。
 - Render `/health`：生产环境、TiDB 和 LLM 配置可用。
 - MCP Inspector：线上 `tools/list`、`tools/call`、`resources/list` 和 `resources/read` 已成功。
@@ -36,6 +36,8 @@ OfferPilot 当前已达到可用于作品集、项目答辩和 AI 应用开发�
 1. “适合我的画像”此前错误回退到岗位查询，现已纳入 `profile-match` 规则。
 2. Text2SQL 规则兜底此前不支持“岗位类型统计”和“出现次数最多的N项技能”，现已补齐。
 3. SQL Guard 在组合筛选中把逻辑 `AND` 误判为未授权函数，现已修复并增加回归测试。
+4. SQLGlot 的内部函数名曾导致 `YEAR()` 被误判，现改为按 MySQL 方言实际渲染出的函数名检查。
+5. SQL Guard 现会拦截不属于当前查询表的字段、歧义字段、未知通配符别名、`SELECT INTO` 和超大 OFFSET。
 
 ## 主要剩余风险
 

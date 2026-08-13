@@ -37,6 +37,7 @@ class JobRead(BaseModel):
     job_type: str | None = None
     source_url: str | None = None
     requirement_json: dict | None = None
+    skills: list[dict] = Field(default_factory=list)
     description: str
     created_at: str
     updated_at: str
@@ -50,6 +51,10 @@ class JobListItem(BaseModel):
     city: str | None = None
     job_type: str | None = None
     source_url: str | None = None
+    extraction_status: str
+    skill_count: int = 0
+    skill_names: list[str] = Field(default_factory=list)
+    requirement_highlights: list[str] = Field(default_factory=list)
     description_preview: str
     created_at: str
 

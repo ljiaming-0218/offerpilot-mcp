@@ -8,5 +8,16 @@
   {"sql": "SELECT job_id FROM jobs WHERE company_id IN (SELECT company_id FROM companies)", "expected_safe": false, "reason": "subquery"},
   {"sql": "SELECT job_id FROM jobs; DROP TABLE jobs", "expected_safe": false, "reason": "multiple_statements"},
   {"sql": "SELECT job_id FROM jobs FOR UPDATE", "expected_safe": false, "reason": "locking_read"},
-  {"sql": "SELECT @@version FROM jobs", "expected_safe": false, "reason": "session_variable"}
+  {"sql": "SELECT @@version FROM jobs", "expected_safe": false, "reason": "session_variable"},
+  {"sql": "SELECT DATABASE() FROM jobs", "expected_safe": false, "reason": "database_metadata"},
+  {"sql": "SELECT USER() FROM jobs", "expected_safe": false, "reason": "database_identity"},
+  {"sql": "SELECT VERSION() FROM jobs", "expected_safe": false, "reason": "database_version"},
+  {"sql": "SELECT BENCHMARK(1000000, 1 + 1) FROM jobs", "expected_safe": false, "reason": "resource_exhaustion"},
+  {"sql": "SELECT LOAD_FILE('/etc/passwd') FROM jobs", "expected_safe": false, "reason": "file_access"},
+  {"sql": "SELECT job_id FROM jobs WHERE title REGEXP '.*'", "expected_safe": false, "reason": "unsupported_operator"},
+  {"sql": "SELECT company_name FROM jobs", "expected_safe": false, "reason": "column_not_in_referenced_table"},
+  {"sql": "SELECT city FROM jobs j JOIN companies c ON c.company_id = j.company_id", "expected_safe": false, "reason": "ambiguous_column"},
+  {"sql": "SELECT unknown_alias.* FROM jobs j", "expected_safe": false, "reason": "unknown_wildcard_alias"},
+  {"sql": "SELECT job_id INTO OUTFILE '/tmp/jobs.txt' FROM jobs", "expected_safe": false, "reason": "file_write"},
+  {"sql": "SELECT job_id FROM jobs LIMIT 10 OFFSET 10000001", "expected_safe": false, "reason": "excessive_offset"}
 ]

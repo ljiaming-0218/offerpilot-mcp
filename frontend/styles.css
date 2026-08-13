@@ -597,6 +597,32 @@ textarea:focus {
   font-weight: 800;
 }
 
+.job-skill-summary {
+  min-width: 210px;
+  display: grid;
+  justify-items: start;
+  gap: 7px;
+}
+
+.job-skill-summary small {
+  max-width: 280px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.job-skill-tags {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.tag.tag-compact {
+  min-height: 22px;
+  padding: 0 7px;
+  font-size: 11px;
+}
+
 .muted {
   color: var(--muted);
   font-size: 12px;
