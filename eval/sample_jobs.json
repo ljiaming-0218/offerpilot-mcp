@@ -1,0 +1,12 @@
+[
+  {"fixture_id": "job-001", "title": "后端开发实习生", "company_name": "评估样例公司A", "city": "北京", "job_type": "实习", "description": "负责 Python API 开发，要求熟悉 FastAPI、MySQL 和 Git。", "is_fixture": true},
+  {"fixture_id": "job-002", "title": "大模型应用实习生", "company_name": "评估样例公司B", "city": "上海", "job_type": "实习", "description": "负责 RAG、Agent 和 Prompt 工程，要求能够完成服务部署。", "is_fixture": true},
+  {"fixture_id": "job-003", "title": "AI Agent 开发实习生", "company_name": "评估样例公司C", "city": "杭州", "job_type": "实习", "description": "负责 Tool Calling、MCP 和 Agent Trace，要求掌握 Python。", "is_fixture": true},
+  {"fixture_id": "job-004", "title": "Java 后端工程师", "company_name": "评估样例公司D", "city": "南京", "job_type": "校招", "description": "负责 Spring Boot 服务和 MySQL 数据库开发。", "is_fixture": true},
+  {"fixture_id": "job-005", "title": "前端开发工程师", "company_name": "评估样例公司E", "city": "深圳", "job_type": "校招", "description": "负责 JavaScript、Vue 和 CSS 页面开发。", "is_fixture": true},
+  {"fixture_id": "job-006", "title": "数据开发工程师", "company_name": "评估样例公司F", "city": "成都", "job_type": "校招", "description": "负责 SQL 数据处理、任务调度和数据质量检查。", "is_fixture": true},
+  {"fixture_id": "job-007", "title": "RAG 应用工程师", "company_name": "评估样例公司G", "city": "北京", "job_type": "社招", "description": "负责文档切分、向量检索、重排和引用生成。", "is_fixture": true},
+  {"fixture_id": "job-008", "title": "Python 测试开发工程师", "company_name": "评估样例公司H", "city": "武汉", "job_type": "校招", "description": "负责接口自动化测试、日志分析和质量评估。", "is_fixture": true},
+  {"fixture_id": "job-009", "title": "LLM 平台工程师", "company_name": "评估样例公司I", "city": "广州", "job_type": "社招", "description": "负责大模型 API、可观测性、限流和部署。", "is_fixture": true},
+  {"fixture_id": "job-010", "title": "数据库开发工程师", "company_name": "评估样例公司J", "city": "成都", "job_type": "校招", "description": "负责数据库查询优化、索引设计和 SQL 安全。", "is_fixture": true}
+]

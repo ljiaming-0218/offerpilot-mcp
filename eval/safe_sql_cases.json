@@ -1,0 +1,7 @@
+[
+  {"sql": "SELECT job_id, title FROM jobs", "expected_safe": true},
+  {"sql": "SELECT j.job_id, c.company_name FROM jobs j JOIN companies c ON c.company_id = j.company_id", "expected_safe": true},
+  {"sql": "SELECT s.skill_name, COUNT(js.job_id) AS job_count FROM skills s JOIN job_skills js ON js.skill_id = s.skill_id GROUP BY s.skill_id, s.skill_name", "expected_safe": true},
+  {"sql": "SELECT job_type, COUNT(job_id) AS job_count FROM jobs GROUP BY job_type LIMIT 20", "expected_safe": true},
+  {"sql": "SELECT city, COUNT(job_id) AS job_count FROM jobs GROUP BY city LIMIT 500", "expected_safe": true}
+]

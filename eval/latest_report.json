@@ -1,0 +1,56 @@
+{
+  "scope": "offline_deterministic",
+  "passed": 50,
+  "total": 50,
+  "rate": 1.0,
+  "metrics": [
+    {
+      "name": "skill_routing",
+      "passed": 12,
+      "total": 12,
+      "rate": 1.0,
+      "failures": []
+    },
+    {
+      "name": "sql_guard",
+      "passed": 15,
+      "total": 15,
+      "rate": 1.0,
+      "failures": []
+    },
+    {
+      "name": "text2sql_rules",
+      "passed": 5,
+      "total": 5,
+      "rate": 1.0,
+      "failures": []
+    },
+    {
+      "name": "crawler_parser",
+      "passed": 5,
+      "total": 5,
+      "rate": 1.0,
+      "failures": []
+    },
+    {
+      "name": "skill_assets",
+      "passed": 7,
+      "total": 7,
+      "rate": 1.0,
+      "failures": []
+    },
+    {
+      "name": "mcp_capabilities",
+      "passed": 6,
+      "total": 6,
+      "rate": 1.0,
+      "failures": []
+    }
+  ],
+  "limitations": [
+    "不连接生产数据库，不评价线上数据完整性",
+    "不调用 LLM，不代表模型路由、抽取或生成质量",
+    "爬虫仅验证通用解析器对固定 HTML fixture 的行为",
+    "模拟面试与回答评价需要人工抽样复核"
+  ]
+}

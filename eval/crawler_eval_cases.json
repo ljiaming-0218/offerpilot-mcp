@@ -1,0 +1,27 @@
+[
+  {
+    "case_id": "crawler-001",
+    "html": "<html><head><title>后端开发实习生</title></head><body><h1>后端开发实习生</h1><p>北京</p><p>示例科技有限公司</p><p>实习生，熟悉 Python 和 MySQL。</p></body></html>",
+    "expected": {"title": "后端开发实习生", "company_name": "示例科技有限公司", "city": "北京", "job_type": "实习"}
+  },
+  {
+    "case_id": "crawler-002",
+    "html": "<html><body><h1>大模型应用工程师</h1><p>上海</p><p>职位来源</p><p>评估样例股份有限公司</p><p>负责 RAG 和 Agent 应用开发。</p></body></html>",
+    "expected": {"title": "大模型应用工程师", "company_name": "评估样例股份有限公司", "city": "上海", "job_type": null}
+  },
+  {
+    "case_id": "crawler-003",
+    "html": "<html><head><title>2027届校招前端开发工程师</title></head><body><p>杭州</p><p>前端样例科技公司</p><p>校园招聘，要求掌握 JavaScript。</p></body></html>",
+    "expected": {"title": "2027届校招前端开发工程师", "company_name": "前端样例科技公司", "city": "杭州", "job_type": "校招"}
+  },
+  {
+    "case_id": "crawler-004",
+    "html": "<html><body><h1>算法实习生</h1><p>深圳/广州</p><p>算法评估研究院</p><script>ignore()</script><p>实习岗位，负责模型评测。</p></body></html>",
+    "expected": {"title": "算法实习生", "company_name": "算法评估研究院", "city": "深圳/广州", "job_type": "实习"}
+  },
+  {
+    "case_id": "crawler-005",
+    "html": "<html><body><h1>数据库开发工程师</h1><p>成都</p><p>职位来源</p><p>数据库评估有限公司</p><p>社招岗位，负责数据库性能优化。</p></body></html>",
+    "expected": {"title": "数据库开发工程师", "company_name": "数据库评估有限公司", "city": "成都", "job_type": "社招"}
+  }
+]

@@ -1,0 +1,14 @@
+[
+  {"task": "查询北京有哪些 AI 岗位", "expected_skill": "job-search"},
+  {"task": "统计岗位数最多的前5家公司", "expected_skill": "job-search"},
+  {"task": "采集 https://example.com/jobs/101", "expected_skill": "jd-crawl"},
+  {"task": "采集 https://example.com/jobs/102 并分析岗位要求", "expected_skill": "jd-crawl"},
+  {"task": "分析 21 号岗位", "expected_skill": "jd-analysis"},
+  {"task": "为岗位 ID 21 提取技能", "expected_skill": "jd-analysis"},
+  {"task": "根据我的简历匹配岗位", "expected_skill": "profile-match"},
+  {"task": "哪些岗位适合我的画像", "expected_skill": "profile-match"},
+  {"task": "针对 21 号岗位进行模拟面试", "expected_skill": "mock-interview"},
+  {"task": "会话 5，题目：如何设计工具权限？，回答：我会使用白名单和审计日志。请评估回答", "expected_skill": "answer-evaluator"},
+  {"task": "根据我的岗位匹配生成学习计划", "expected_skill": "study-plan"},
+  {"task": "帮我安排补齐技能的优先级", "expected_skill": "study-plan"}
+]

@@ -6,6 +6,20 @@ from backend.services import sql_guard_service, text2sql_service
 
 
 class SqlGuardAstTests(unittest.TestCase):
+    def test_allows_combined_city_and_skill_filters(self) -> None:
+        result = sql_guard_service.check_sql_safety(
+            """
+            SELECT j.job_id
+            FROM jobs j
+            JOIN job_skills js ON js.job_id = j.job_id
+            JOIN skills s ON s.skill_id = js.skill_id
+            WHERE j.city LIKE '%杭州%'
+              AND LOWER(s.skill_name) = LOWER('Agent')
+            """
+        )
+
+        self.assertTrue(result["safe"], result["reason"])
+
     def test_allows_expected_job_query_and_adds_limit(self) -> None:
         result = sql_guard_service.check_sql_safety(
             """

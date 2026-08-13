@@ -108,8 +108,9 @@ def _generate_sql_by_rules(question: str) -> str:
         LIMIT {limit}
         """
 
-    if "热门技能" in question or "最多的技能" in question or "技能统计" in question:
-        return """
+    if "技能" in question and any(keyword in question for keyword in ["热门", "最多", "统计"]):
+        limit = _extract_requested_limit(question, default=10)
+        return f"""
         SELECT
             s.skill_name,
             s.category,
@@ -117,6 +118,17 @@ def _generate_sql_by_rules(question: str) -> str:
         FROM skills s
         JOIN job_skills js ON js.skill_id = s.skill_id
         GROUP BY s.skill_id, s.skill_name, s.category
+        ORDER BY job_count DESC
+        LIMIT {limit}
+        """
+
+    if "岗位类型" in question and any(keyword in question for keyword in ["多少", "数量", "统计"]):
+        return """
+        SELECT
+            j.job_type,
+            COUNT(j.job_id) AS job_count
+        FROM jobs j
+        GROUP BY j.job_type
         ORDER BY job_count DESC
         """
 

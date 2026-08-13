@@ -132,6 +132,8 @@ def _validate_columns(expression: exp.Select) -> str | None:
 
 def _validate_functions(expression: exp.Select) -> str | None:
     for function in expression.find_all(exp.Func):
+        if isinstance(function, (exp.And, exp.Or)):
+            continue
         if isinstance(function, exp.Anonymous):
             function_name = function.name.lower()
         else:

@@ -154,7 +154,12 @@ offerpilot-mcp/
 │   ├── app.js
 │   └── styles.css
 ├── eval/
-│   └── cases/
+│   ├── run_evaluations.py          # 离线确定性评估入口
+│   ├── *_eval_cases.json           # 路由、SQL、爬虫评估用例
+│   ├── latest_report.json          # 机器可读评估结果
+│   └── latest_report.md            # 可展示评估报告
+├── tests/                          # 自动化回归测试
+├── PROJECT_ASSESSMENT.md           # 当前项目完成度与风险评估
 ├── .env.example
 ├── requirements.txt
 ├── AGENTS.md
@@ -285,6 +290,20 @@ python -m compileall backend
 node --check frontend\app.js
 ```
 
+全量单元与集成边界测试：
+
+```bat
+python -m unittest discover -s tests -q
+```
+
+离线确定性评估并生成报告：
+
+```bat
+python -m eval.run_evaluations --write-report
+```
+
+当前验证结果为70项自动化测试通过、50/50项离线确定性评估通过。评估覆盖规则路由、SQL Guard、Text2SQL 规则兜底、通用 HTML 解析器、Skill 资产完整性和 MCP Tool/Resource 注册。详细结果见 [`eval/latest_report.md`](eval/latest_report.md)。该结果不代表线上数据完整性或 LLM 生成质量。
+
 接口联调建议顺序：
 
 1. `GET /health`
@@ -336,13 +355,16 @@ Token 只能放在 `Authorization` Header，不要拼接到 URL。`mcp dev` 直�
 
 仍需完善：
 
-- 自动化测试覆盖不足。
+- 当前已有70项自动化测试和50项离线确定性评估，但尚未统计代码覆盖率，也未建立固定模型下的在线 LLM 评估基线。
 - MCP 当前暴露只读岗位工具和技能目录 Resource，尚未实现 Prompts。
 - 远程 MCP 已有静态 Bearer Token 和单实例内存限流，但尚未实现标准 OAuth 2.1、scope 和多实例共享限流。
-- Skill Loader 已能发现本地 Skill，但 Skill 内容尚未真正驱动通用执行器。
+- Skill Loader 已能发现7个本地 Skill，并约束允许工具和质量检查；Planner 的执行形状仍按 Skill 硬编码，尚未成为完全由 Skill 文件驱动的通用执行器。
+- `search_jobs` 当前返回完整岗位列表，尚未提供 MCP 分页和过滤参数，真实数据增长后会占用较多上下文。
+- 部分采集正文仍含页面导航等噪声，部分岗位尚未完成技能与结构化要求抽取，数据质量需要持续治理。
 - 爬虫已具备应用层 SSRF 防护；生产环境仍应通过网络出口策略阻断内网和云元数据访问。
 - 部署环境尚未做生产级安全加固。
-- Eval 结果需要整理为可展示报告。
+
+当前完成度、证据与风险分级见 [`PROJECT_ASSESSMENT.md`](PROJECT_ASSESSMENT.md)。
 
 ## 部署上线流程
 
@@ -442,7 +464,8 @@ python -c "import secrets; print(secrets.token_urlsafe(48))"
 
 ## 下一步优先级
 
-1. 补充自动化测试，至少覆盖健康检查、岗位采集、技能抽取、Text2SQL Guard、简历解析和匹配分析。
-2. 将远程 MCP 的静态 Token 升级为标准 OAuth 2.1，并为公网写接口增加共享限流与审计。
-3. 让 Skill 定义真正约束允许工具、执行步骤和质量检查。
-4. 整理 `eval/`，形成可复现的项目评估报告。
+1. 清洗采集正文中的导航噪声，并批量补齐真实岗位的技能和结构化要求。
+2. 为 `search_jobs` 增加过滤、分页和返回上限，控制 MCP 上下文体积。
+3. 固定模型与 Prompt 版本，建立路由、技能抽取、面试题和回答评价的在线 LLM 评估集。
+4. 根据部署规模决定是否升级 OAuth 2.1、共享限流和更完整的可观测性。
+5. 再考虑新增 MCP Prompt，或进一步让 Skill 文件驱动通用 Planner。

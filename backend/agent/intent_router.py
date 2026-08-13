@@ -116,7 +116,7 @@ def _route_task_by_rules(task: str) -> dict:
 
     if _contains_any(
         normalized_task,
-        ["我的匹配", "岗位匹配", "匹配岗位", "适合我的岗位", "匹配度"],
+        ["我的匹配", "岗位匹配", "匹配岗位", "适合我的岗位", "适合我的画像", "匹配度"],
     ):
         return _rule_result(task, "profile-match", "任务表达了基于当前画像的岗位匹配意图")
 
