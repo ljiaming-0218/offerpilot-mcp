@@ -1075,6 +1075,12 @@ function dimensionLabel(key) {
 }
 
 function renderMatchResult(result) {
+  const minimumScore = 30;
+  const visibleMatches = (result.matches || []).filter(
+    (item) => Number(item.match_score || 0) >= minimumScore
+  );
+  const hiddenCount = Math.max((result.matches || []).length - visibleMatches.length, 0);
+
   $("match-summary").innerHTML = `
     <article class="metric-card">
       <span>可分析岗位</span>
@@ -1082,9 +1088,9 @@ function renderMatchResult(result) {
       <small>已有技能标签的岗位</small>
     </article>
     <article class="metric-card">
-      <span>有匹配岗位</span>
-      <strong>${escapeHtml(result.matched_jobs)}</strong>
-      <small>至少命中一个技能</small>
+      <span>推荐岗位</span>
+      <strong>${escapeHtml(visibleMatches.length)}</strong>
+      <small>匹配度达到 ${minimumScore}%</small>
     </article>
     <article class="metric-card">
       <span>用户技能</span>
@@ -1093,20 +1099,32 @@ function renderMatchResult(result) {
     </article>
   `;
 
-  if (!result.matches.length) {
+  if (!(result.matches || []).length) {
     $("match-list").innerHTML = renderEmpty("暂无可分析岗位。请先对岗位执行技能抽取。");
     return;
   }
 
-  $("match-list").innerHTML = result.matches.map((item) => `
-    <article class="match-card">
-      <div class="score-box">
-        <strong>${escapeHtml(item.match_score)}%</strong>
-        <span>技能覆盖</span>
-      </div>
-      <div>
-        <h3>${escapeHtml(item.title)}</h3>
-        <p class="muted">${escapeHtml(item.company_name)} · ${escapeHtml(formatValue(item.city, "城市未知"))} · ${escapeHtml(formatValue(item.job_type, "类型未标注"))}</p>
+  if (!visibleMatches.length) {
+    $("match-list").innerHTML = renderEmpty(`没有匹配度达到 ${minimumScore}% 的岗位。可继续补充画像技能后重新匹配。`);
+    return;
+  }
+
+  $("match-list").innerHTML = `
+    ${hiddenCount ? `<p class="match-filter-note">已隐藏 ${escapeHtml(hiddenCount)} 个匹配度低于 ${minimumScore}% 的岗位。</p>` : ""}
+    ${visibleMatches.map((item) => `
+    <details class="match-card">
+      <summary class="match-card-summary">
+        <div class="score-box">
+          <strong>${escapeHtml(item.match_score)}%</strong>
+          <span>技能覆盖</span>
+        </div>
+        <div class="match-card-heading">
+          <h3>${escapeHtml(item.title)}</h3>
+          <p class="muted">${escapeHtml(item.company_name)} · ${escapeHtml(formatValue(item.city, "城市未知"))} · ${escapeHtml(formatValue(item.job_type, "类型未标注"))}</p>
+        </div>
+        <span class="match-toggle-label" aria-hidden="true"></span>
+      </summary>
+      <div class="match-card-body">
         <div class="match-section">
           <span class="muted">已满足技能</span>
           <div class="tag-list">${renderSkillTagList(item.matched_skills, "暂无命中技能")}</div>
@@ -1121,8 +1139,9 @@ function renderMatchResult(result) {
           ${item.source_url ? `<a class="button button-secondary" href="${escapeHtml(item.source_url)}" target="_blank" rel="noreferrer">打开来源</a>` : ""}
         </div>
       </div>
-    </article>
-  `).join("");
+    </details>
+  `).join("")}
+  `;
 }
 
 function renderRequirementChecks(checks) {

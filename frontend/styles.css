@@ -1048,13 +1048,62 @@ textarea:focus {
 }
 
 .match-card {
-  display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
-  gap: 14px;
   border: 1px solid var(--border);
   border-radius: 7px;
-  padding: 13px;
   background: var(--surface-soft);
+}
+
+.match-card-summary {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 13px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.match-card-summary::-webkit-details-marker {
+  display: none;
+}
+
+.match-card-summary:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.match-card[open] .match-card-summary {
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.match-card-body {
+  padding: 4px 14px 14px 120px;
+}
+
+.match-card-heading {
+  min-width: 0;
+}
+
+.match-toggle-label {
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.match-toggle-label::before {
+  content: "展开详情";
+}
+
+.match-card[open] .match-toggle-label::before {
+  content: "收起详情";
+}
+
+.match-filter-note {
+  margin: 0;
+  padding: 0 2px;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .score-box {
@@ -1575,8 +1624,20 @@ pre {
     align-items: stretch;
   }
 
-  .match-card {
-    grid-template-columns: 1fr;
+  .match-card-summary {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .match-card-summary .score-box {
+    min-height: 70px;
+  }
+
+  .match-toggle-label {
+    grid-column: 2;
+  }
+
+  .match-card-body {
+    padding: 4px 12px 12px;
   }
 
   .study-plan-summary,
