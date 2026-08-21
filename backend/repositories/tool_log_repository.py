@@ -75,3 +75,44 @@ def list_tool_call_logs(limit: int = 20) -> list[dict]:
         ).mappings().all()
 
     return [dict(row) for row in rows]
+
+
+def get_tool_call_log(call_id: int) -> dict | None:
+    with engine.connect() as connection:
+        row = connection.execute(
+            text(
+                """
+                SELECT
+                    call_id,
+                    user_id,
+                    tool_name,
+                    input_json,
+                    output_json,
+                    status,
+                    error_message,
+                    latency_ms,
+                    CAST(created_at AS CHAR) AS created_at
+                FROM tool_call_logs
+                WHERE call_id = :call_id
+                LIMIT 1
+                """
+            ),
+            {"call_id": call_id},
+        ).mappings().first()
+
+    if row is None:
+        return None
+
+    result = dict(row)
+    result["input"] = _load_json(result.pop("input_json", None))
+    result["output"] = _load_json(result.pop("output_json", None))
+    return result
+
+
+def _load_json(value: str | None):
+    if not value:
+        return None
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError:
+        return None

@@ -12,6 +12,8 @@ const state = {
   authToken: localStorage.getItem("offerpilot_token") || "",
   authMode: "login",
   selectedJob: null,
+  selectedTrace: null,
+  selectedLog: null,
   lastAgentResult: null,
   lastCrawlResult: null,
 };
@@ -257,15 +259,47 @@ async function loadTools() {
 }
 
 async function loadLogs() {
-  state.logs = await api("/tools/logs?limit=12");
+  state.logs = await api("/tools/logs?limit=30");
+  if (!state.logs.length) {
+    state.selectedLog = null;
+    renderLogDetail();
+  } else if (!state.selectedLog || !state.logs.some((log) => log.call_id === state.selectedLog.call_id)) {
+    await loadLogDetail(state.logs[0].call_id);
+  } else {
+    renderLogDetail();
+  }
   renderDashboard();
   renderLogs();
+  renderOpsMetrics();
 }
 
 async function loadTraces() {
-  state.traces = await api("/agent/traces?limit=8");
+  state.traces = await api("/agent/traces?limit=20");
+  if (!state.traces.length) {
+    state.selectedTrace = null;
+    renderTraceDetail();
+  } else if (!state.selectedTrace || !state.traces.some((trace) => trace.trace_id === state.selectedTrace.trace_id)) {
+    await loadTraceDetail(state.traces[0].trace_id);
+  } else {
+    renderTraceDetail();
+  }
   renderDashboard();
   renderTraceHistory();
+  renderOpsMetrics();
+}
+
+async function loadTraceDetail(traceId) {
+  state.selectedTrace = await api(`/agent/traces/${traceId}`);
+  renderTraceDetail();
+  renderTraceHistory();
+  renderOpsMetrics();
+}
+
+async function loadLogDetail(callId) {
+  state.selectedLog = await api(`/tools/logs/${callId}`);
+  renderLogDetail();
+  renderLogs();
+  renderOpsMetrics();
 }
 
 async function loadCrawlRecords() {
@@ -1220,35 +1254,69 @@ async function saveProfile(event) {
 }
 
 function renderLogs() {
-  const target = $("log-list");
-  if (!state.logs.length) {
-    target.innerHTML = renderEmpty("暂无工具调用日志。");
-    return;
-  }
+  const filter = $("log-status-filter")?.value || "";
+  const logs = filter ? state.logs.filter((log) => log.status === filter) : state.logs;
+  const renderList = (target, items, isInteractive) => {
+    if (!target) return;
+    if (!items.length) {
+      target.innerHTML = renderEmpty(filter ? "当前筛选下没有工具调用。" : "暂无工具调用日志。");
+      return;
+    }
 
-  target.innerHTML = state.logs.map((log) => `
-    <div class="list-item">
-      <strong>#${escapeHtml(log.call_id)} ${escapeHtml(log.tool_name)}</strong>
-      <p>${escapeHtml(log.status)} · ${escapeHtml(formatValue(log.latency_ms, "--"))}ms · ${escapeHtml(formatDate(log.created_at))}</p>
-      ${log.error_message ? `<p>${escapeHtml(log.error_message)}</p>` : ""}
-    </div>
-  `).join("");
+    target.innerHTML = items.map((log) => {
+      const selected = state.selectedLog?.call_id === log.call_id;
+      const body = `
+        <div class="record-row-main">
+          <strong>#${escapeHtml(log.call_id)} ${escapeHtml(log.tool_name)}</strong>
+          ${statusPill(log.status, log.status === "success" ? "success" : "danger")}
+        </div>
+        <p>${escapeHtml(formatValue(log.latency_ms, "--"))}ms · ${escapeHtml(formatDate(log.created_at))}</p>
+        ${log.error_message ? `<p class="record-error">${escapeHtml(log.error_message)}</p>` : ""}
+      `;
+      return isInteractive
+        ? `<button class="record-row ${selected ? "is-selected" : ""}" data-log-id="${escapeHtml(log.call_id)}" type="button">${body}</button>`
+        : `<div class="list-item">${body}</div>`;
+    }).join("");
+  };
+
+  renderList($("log-list"), logs, true);
+  renderList($("console-log-list"), state.logs.slice(0, 6), false);
 }
 
 function renderTraceHistory() {
-  const target = $("history-list");
-  if (!state.traces.length) {
-    target.innerHTML = renderEmpty("暂无 Agent Trace 历史。");
-    return;
-  }
+  const keyword = ($("trace-search")?.value || "").trim().toLowerCase();
+  const traces = keyword
+    ? state.traces.filter((trace) => {
+      const text = `${trace.trace_id} ${trace.skill_name || ""} ${trace.task || ""}`.toLowerCase();
+      return text.includes(keyword);
+    })
+    : state.traces;
 
-  target.innerHTML = state.traces.map((trace) => `
-    <div class="list-item">
-      <strong>#${escapeHtml(trace.trace_id)} ${escapeHtml(trace.skill_name || "--")}</strong>
-      <p>${escapeHtml(trace.task)}</p>
-      <p>${escapeHtml(formatDate(trace.created_at))}</p>
-    </div>
-  `).join("");
+  const renderList = (target, items, isInteractive) => {
+    if (!target) return;
+    if (!items.length) {
+      target.innerHTML = renderEmpty(keyword ? "当前搜索下没有运行记录。" : "暂无 Agent Trace 历史。");
+      return;
+    }
+
+    target.innerHTML = items.map((trace) => {
+      const selected = state.selectedTrace?.trace_id === trace.trace_id;
+      const body = `
+        <div class="record-row-main">
+          <strong>#${escapeHtml(trace.trace_id)} ${escapeHtml(trace.skill_name || "--")}</strong>
+          ${statusPill("trace", "neutral")}
+        </div>
+        <p>${escapeHtml(trace.task)}</p>
+        <p>${escapeHtml(formatDate(trace.created_at))}</p>
+      `;
+      return isInteractive
+        ? `<button class="record-row ${selected ? "is-selected" : ""}" data-trace-id="${escapeHtml(trace.trace_id)}" type="button">${body}</button>`
+        : `<div class="list-item">${body}</div>`;
+    }).join("");
+  };
+
+  renderList($("history-list"), traces, true);
+  renderList($("console-history-list"), state.traces.slice(0, 6), false);
 }
 
 function renderCurrentTrace(trace = []) {
@@ -1258,7 +1326,12 @@ function renderCurrentTrace(trace = []) {
     return;
   }
 
-  target.innerHTML = trace.map((step) => {
+  target.innerHTML = renderTraceTimeline(trace);
+}
+
+function renderTraceTimeline(trace = []) {
+  if (!trace.length) return renderEmpty("暂无 Trace 步骤。");
+  return trace.map((step) => {
     const routeMode = step.generation_mode === "llm"
       ? "LLM 路由"
       : step.generation_mode === "rules_fallback" ? "规则兜底" : "";
@@ -1284,6 +1357,96 @@ function renderCurrentTrace(trace = []) {
       </div>
     `;
   }).join("");
+}
+
+function renderTraceDetail() {
+  const trace = state.selectedTrace;
+  const title = $("trace-detail-title");
+  const meta = $("trace-detail-meta");
+  const status = $("trace-detail-status");
+  const answer = $("trace-detail-answer");
+  const timeline = $("trace-detail-timeline");
+  if (!title || !meta || !status || !answer || !timeline) return;
+
+  if (!trace) {
+    title.textContent = "Trace Detail";
+    meta.textContent = "选择左侧运行记录。";
+    status.textContent = "trace";
+    answer.textContent = "暂无运行详情。";
+    timeline.innerHTML = renderEmpty("暂无 Trace 步骤。");
+    return;
+  }
+
+  title.textContent = `#${trace.trace_id} ${trace.skill_name || "Agent Run"}`;
+  meta.textContent = `${formatDate(trace.created_at)} · user=${formatValue(trace.user_id)}`;
+  status.textContent = `${(trace.trace || []).length} steps`;
+  answer.innerHTML = `
+    <strong>最终回答</strong>
+    <p>${escapeHtml(trace.final_answer || "无最终回答")}</p>
+    <strong>任务输入</strong>
+    <p>${escapeHtml(trace.task || "--")}</p>
+  `;
+  timeline.innerHTML = renderTraceTimeline(trace.trace || []);
+}
+
+function renderLogDetail() {
+  const target = $("log-detail");
+  if (!target) return;
+  const log = state.selectedLog;
+  if (!log) {
+    target.innerHTML = renderEmpty("选择一条工具调用查看输入输出。");
+    return;
+  }
+
+  target.innerHTML = `
+    <div class="log-detail-head">
+      <div>
+        <strong>#${escapeHtml(log.call_id)} ${escapeHtml(log.tool_name)}</strong>
+        <p>${escapeHtml(formatDate(log.created_at))} · ${escapeHtml(formatValue(log.latency_ms, "--"))}ms</p>
+      </div>
+      ${statusPill(log.status, log.status === "success" ? "success" : "danger")}
+    </div>
+    ${log.error_message ? `<p class="record-error">${escapeHtml(log.error_message)}</p>` : ""}
+    <details open>
+      <summary>Input</summary>
+      <pre>${escapeHtml(formatJson(log.input))}</pre>
+    </details>
+    <details>
+      <summary>Output</summary>
+      <pre>${escapeHtml(formatJson(log.output))}</pre>
+    </details>
+  `;
+}
+
+function renderOpsMetrics() {
+  const traceCount = $("ops-trace-count");
+  const logCount = $("ops-log-count");
+  const successRate = $("ops-success-rate");
+  const avgLatency = $("ops-avg-latency");
+  if (!traceCount || !logCount || !successRate || !avgLatency) return;
+
+  const logs = state.logs || [];
+  const success = logs.filter((log) => log.status === "success").length;
+  const latencies = logs
+    .map((log) => Number(log.latency_ms))
+    .filter((value) => Number.isFinite(value));
+  const average = latencies.length
+    ? Math.round(latencies.reduce((sum, value) => sum + value, 0) / latencies.length)
+    : null;
+
+  traceCount.textContent = state.traces.length;
+  logCount.textContent = logs.length;
+  successRate.textContent = logs.length ? `${Math.round((success / logs.length) * 100)}%` : "--";
+  avgLatency.textContent = average === null ? "--" : `${average}ms`;
+}
+
+function formatJson(value) {
+  if (value === null || value === undefined) return "--";
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch (error) {
+    return String(value);
+  }
 }
 
 function findToolOutput(result) {
@@ -1842,6 +2005,10 @@ function bindEvents() {
   $("refresh-jobs").addEventListener("click", loadJobs);
   $("refresh-logs").addEventListener("click", loadLogs);
   $("refresh-traces").addEventListener("click", loadTraces);
+  $("refresh-console-logs").addEventListener("click", loadLogs);
+  $("refresh-console-traces").addEventListener("click", loadTraces);
+  $("trace-search").addEventListener("input", renderTraceHistory);
+  $("log-status-filter").addEventListener("change", renderLogs);
   $("refresh-crawl-records").addEventListener("click", loadCrawlRecords);
   $("refresh-profiles").addEventListener("click", loadProfiles);
   $("batch-extract").addEventListener("click", runBatchExtract);
@@ -1893,6 +2060,18 @@ function bindEvents() {
     if (profileLoadButton) {
       $("profile-user-id").value = profileLoadButton.dataset.profileLoad || "";
       loadProfile();
+      return;
+    }
+
+    const traceButton = event.target.closest("[data-trace-id]");
+    if (traceButton) {
+      loadTraceDetail(traceButton.dataset.traceId);
+      return;
+    }
+
+    const logButton = event.target.closest("[data-log-id]");
+    if (logButton) {
+      loadLogDetail(logButton.dataset.logId);
     }
   });
 
@@ -1900,5 +2079,8 @@ function bindEvents() {
 
 bindEvents();
 renderCurrentTrace();
+renderTraceDetail();
+renderLogDetail();
+renderOpsMetrics();
 renderStructuredResult(null);
 restoreAuth();

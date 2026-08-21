@@ -29,3 +29,8 @@ class ToolCallLogItem(BaseModel):
     error_message: str | None = None
     latency_ms: int | None = None
     created_at: str
+
+
+class ToolCallLogDetail(ToolCallLogItem):
+    input: dict | None = None
+    output: dict | list | None = None

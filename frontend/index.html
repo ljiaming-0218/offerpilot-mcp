@@ -274,18 +274,96 @@
       </section>
 
       <section class="view" id="view-skills">
-        <section class="surface">
-          <div class="section-head">
+        <section class="surface ops-hero">
+          <div class="section-head ops-head">
             <div>
-                <h2>运行记录</h2>
-                <p>集中查看技能标签、批处理结果和后续开发者侧排查入口。</p>
+              <h2>运行记录</h2>
+              <p>面向 Agent 调试和面试演示，集中查看 Trace、工具调用、批处理和技能抽取状态。</p>
             </div>
             <div class="topbar-actions">
+              <button class="button button-ghost" id="refresh-traces" type="button">刷新 Trace</button>
+              <button class="button button-ghost" id="refresh-logs" type="button">刷新日志</button>
               <button class="button button-secondary" id="batch-extract" type="button">批量抽取技能</button>
               <button class="button button-primary" id="batch-requirements" type="button">批量补全岗位要求</button>
             </div>
           </div>
+          <div class="ops-metrics">
+            <div class="ops-metric">
+              <span>Agent Runs</span>
+              <strong id="ops-trace-count">0</strong>
+              <small>最近加载的运行记录</small>
+            </div>
+            <div class="ops-metric">
+              <span>Tool Calls</span>
+              <strong id="ops-log-count">0</strong>
+              <small>最近加载的工具调用</small>
+            </div>
+            <div class="ops-metric">
+              <span>Success Rate</span>
+              <strong id="ops-success-rate">--</strong>
+              <small>基于当前日志窗口</small>
+            </div>
+            <div class="ops-metric">
+              <span>Avg Latency</span>
+              <strong id="ops-avg-latency">--</strong>
+              <small>工具调用平均耗时</small>
+            </div>
+          </div>
           <div class="batch-progress is-hidden" id="batch-progress" aria-live="polite"></div>
+        </section>
+
+        <section class="ops-workbench">
+          <aside class="surface ops-panel">
+            <div class="section-head compact">
+              <div>
+                <h2>运行列表</h2>
+                <p>选择一次运行查看完整执行链路。</p>
+              </div>
+            </div>
+            <div class="ops-filter-row">
+              <input id="trace-search" type="search" placeholder="搜索任务、Skill 或 trace_id">
+            </div>
+            <div class="run-list" id="history-list"></div>
+          </aside>
+
+          <section class="surface ops-panel ops-detail-panel">
+            <div class="section-head compact">
+              <div>
+                <h2 id="trace-detail-title">Trace Detail</h2>
+                <p id="trace-detail-meta" class="muted">选择左侧运行记录。</p>
+              </div>
+              <span id="trace-detail-status" class="status-pill neutral">trace</span>
+            </div>
+            <div class="trace-answer" id="trace-detail-answer">暂无运行详情。</div>
+            <div class="timeline ops-timeline" id="trace-detail-timeline"></div>
+          </section>
+
+          <aside class="surface ops-panel">
+            <div class="section-head compact">
+              <div>
+                <h2>工具调用</h2>
+                <p>查看 Tool Registry 的真实调用记录。</p>
+              </div>
+            </div>
+            <div class="ops-filter-row">
+              <select id="log-status-filter">
+                <option value="">全部状态</option>
+                <option value="success">成功</option>
+                <option value="failed">失败</option>
+              </select>
+            </div>
+            <div class="compact-list ops-log-list" id="log-list"></div>
+            <div class="log-detail" id="log-detail"></div>
+          </aside>
+        </section>
+
+        <section class="surface">
+          <div class="section-head compact">
+            <div>
+              <h2>技能标签快照</h2>
+              <p>来自真实 `skills` 与 `job_skills`，用于确认岗位抽取覆盖情况。</p>
+            </div>
+          </div>
           <div class="skill-summary" id="skill-category-summary"></div>
           <div class="skill-grid" id="skill-grid"></div>
         </section>
@@ -347,16 +425,16 @@
           <section class="surface">
             <div class="section-head compact">
               <h2>工具调用日志</h2>
-              <button class="button button-ghost" id="refresh-logs" type="button">刷新</button>
+              <button class="button button-ghost" id="refresh-console-logs" type="button">刷新</button>
             </div>
-            <div class="compact-list" id="log-list"></div>
+            <div class="compact-list" id="console-log-list"></div>
           </section>
           <section class="surface">
             <div class="section-head compact">
               <h2>Trace 历史</h2>
-              <button class="button button-ghost" id="refresh-traces" type="button">刷新</button>
+              <button class="button button-ghost" id="refresh-console-traces" type="button">刷新</button>
             </div>
-            <div class="compact-list" id="history-list"></div>
+            <div class="compact-list" id="console-history-list"></div>
           </section>
         </div>
       </section>

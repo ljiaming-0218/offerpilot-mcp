@@ -66,3 +66,36 @@ def list_agent_traces(limit: int = 20) -> list[dict]:
         ).mappings().all()
 
     return [dict(row) for row in rows]
+
+
+def get_agent_trace(trace_id: int) -> dict | None:
+    with engine.connect() as connection:
+        row = connection.execute(
+            text(
+                """
+                SELECT
+                    trace_id,
+                    user_id,
+                    task,
+                    skill_name,
+                    trace_json,
+                    final_answer,
+                    CAST(created_at AS CHAR) AS created_at
+                FROM agent_traces
+                WHERE trace_id = :trace_id
+                LIMIT 1
+                """
+            ),
+            {"trace_id": trace_id},
+        ).mappings().first()
+
+    if row is None:
+        return None
+
+    result = dict(row)
+    try:
+        trace = json.loads(result.pop("trace_json") or "[]")
+    except json.JSONDecodeError:
+        trace = []
+    result["trace"] = trace if isinstance(trace, list) else []
+    return result

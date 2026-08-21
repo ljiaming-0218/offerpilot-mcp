@@ -48,3 +48,7 @@ class AgentTraceListItem(BaseModel):
     skill_name: str | None = None
     final_answer: str | None = None
     created_at: str
+
+
+class AgentTraceDetail(AgentTraceListItem):
+    trace: list[AgentTraceStep] = Field(default_factory=list)
