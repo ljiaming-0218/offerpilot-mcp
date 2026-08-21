@@ -1613,6 +1613,32 @@ pre {
   word-break: break-word;
 }
 
+.trace-json {
+  margin-top: 8px;
+}
+
+.trace-json summary {
+  cursor: pointer;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.trace-json pre {
+  max-height: 220px;
+  overflow: auto;
+  margin: 8px 0 0;
+  border: 1px solid var(--border-soft);
+  border-radius: 7px;
+  padding: 10px;
+  background: #0f172a;
+  color: #dbeafe;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .compact-list {
   display: grid;
   gap: 8px;

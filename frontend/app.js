@@ -1347,6 +1347,12 @@ function renderTraceTimeline(trace = []) {
     const executionSteps = Array.isArray(step.execution_steps) && step.execution_steps.length
       ? `<p>执行步骤：${escapeHtml(step.execution_steps.join("；"))}</p>`
       : "";
+    const stepInput = step.input
+      ? `<details class="trace-json"><summary>Input</summary><pre>${escapeHtml(formatJson(step.input))}</pre></details>`
+      : "";
+    const stepOutput = step.output
+      ? `<details class="trace-json"><summary>Output</summary><pre>${escapeHtml(formatJson(step.output))}</pre></details>`
+      : "";
     return `
       <div class="timeline-item" data-step="${escapeHtml(step.step)}">
         <strong>${escapeHtml(step.content)}</strong>
@@ -1354,6 +1360,8 @@ function renderTraceTimeline(trace = []) {
         ${step.reason ? `<p>${escapeHtml(step.reason)}</p>` : ""}
         ${allowedTools}
         ${executionSteps}
+        ${stepInput}
+        ${stepOutput}
       </div>
     `;
   }).join("");
