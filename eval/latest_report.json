@@ -1,7 +1,7 @@
 {
   "scope": "offline_deterministic",
-  "passed": 84,
-  "total": 84,
+  "passed": 86,
+  "total": 86,
   "rate": 1.0,
   "metrics": [
     {
@@ -41,8 +41,8 @@
     },
     {
       "name": "mcp_capabilities",
-      "passed": 6,
-      "total": 6,
+      "passed": 8,
+      "total": 8,
       "rate": 1.0,
       "failures": []
     }

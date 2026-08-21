@@ -140,16 +140,21 @@ def evaluate_skill_assets() -> dict:
 def evaluate_mcp_capabilities() -> dict:
     tools = asyncio.run(offerpilot_mcp.list_tools())
     resources = asyncio.run(offerpilot_mcp.list_resources())
+    prompts = asyncio.run(offerpilot_mcp.list_prompts())
     tool_names = {tool.name for tool in tools}
     resource_uris = {str(resource.uri) for resource in resources}
+    prompt_names = {prompt.name for prompt in prompts}
     expected_tools = {"search_jobs", "get_job_detail", "get_job_requirements", "list_skills", "text2sql_query"}
     expected_resources = {"offerpilot://skills/catalog"}
+    expected_prompts = {"job_interview_prompt", "skill_gap_study_plan_prompt"}
     failures = []
     if missing := sorted(expected_tools - tool_names):
         failures.append({"missing_tools": missing})
     if missing := sorted(expected_resources - resource_uris):
         failures.append({"missing_resources": missing})
-    total = len(expected_tools) + len(expected_resources)
+    if missing := sorted(expected_prompts - prompt_names):
+        failures.append({"missing_prompts": missing})
+    total = len(expected_tools) + len(expected_resources) + len(expected_prompts)
     missing_count = sum(len(next(iter(item.values()))) for item in failures)
     return _metric("mcp_capabilities", total - missing_count, total, failures)
 

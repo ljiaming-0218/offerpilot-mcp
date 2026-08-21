@@ -1,20 +1,20 @@
 ---
-title: OfferPilot MCP
+title: OfferPilot Agent
 sdk: docker
 app_port: 7860
 pinned: false
 ---
 
-# OfferPilot MCP
+# OfferPilot Agent
 
-OfferPilot MCP 是一个面向 AI、软件开发和技术岗位求职者的智能岗位管理与分析工作台。
+OfferPilot Agent（原 OfferPilot MCP）是一个面向 AI、软件开发和技术岗位求职者的智能岗位管理与分析工作台。
 
 项目当前定位是：
 
 - 面向用户：采集真实岗位、抽取岗位要求、建立简历画像、分析岗位匹配、生成模拟面试问题。
-- 面向开发者与面试展示：展示 Tool Registry、Text2SQL、SQL Guard、Agent Trace 和工具调用日志。
+- 面向开发者与面试展示：展示 Agent 编排、Tool Registry、Text2SQL、SQL Guard、Agent Trace、MCP Tool/Resource/Prompt 和工具调用日志。
 
-> 说明：当前项目已使用官方 MCP Python SDK 提供 Streamable HTTP Endpoint，并开放第一批只读岗位工具。远程 Endpoint 使用静态 Bearer Token、基础限流和调用审计；这适合当前单用户演示部署，但不等同于完整 OAuth 2.1 授权服务器。
+> 说明：当前项目不是“只有 MCP Server 的插件项目”，而是一个 Agentic 求职分析系统，并通过官方 MCP Python SDK 提供 Streamable HTTP Endpoint。远程 Endpoint 使用静态 Bearer Token、基础限流和调用审计；这适合当前单用户演示部署，但不等同于完整 OAuth 2.1 授权服务器。
 
 ## 当前功能
 
@@ -98,11 +98,14 @@ OfferPilot MCP 是一个面向 AI、软件开发和技术岗位求职者的智�
 - 支持官方 MCP Streamable HTTP Endpoint：`/mcp/`。
 - 支持只读 MCP Resource：`offerpilot://skills/catalog`，用于向 MCP Host 提供真实岗位技能目录上下文。
 - 当前通过 MCP 暴露5个只读工具：
-  - `search_jobs`
+  - `search_jobs`：支持 `keyword`、`city`、`job_type`、`skill`、`extraction_status`、`limit` 和 `offset`，默认返回20条，最大返回50条。
   - `get_job_detail`
   - `get_job_requirements`
   - `list_skills`
   - `text2sql_query`
+- 当前通过 MCP 暴露2个 Prompt：
+  - `job_interview_prompt`：引导 Host 基于真实岗位详情和要求生成可追溯面试题。
+  - `skill_gap_study_plan_prompt`：引导 Host 基于真实岗位和技能目录生成技能补齐建议。
 - 爬虫、画像和面试等涉及写入或用户数据的能力暂不通过 MCP 对外开放。
 - `/agent/run` 面向已登录用户开放；画像匹配与模拟面试工具只从服务端认证上下文取得当前用户可访问的画像，任务文本不能指定其他用户画像。
 - 学习计划只按真实岗位匹配结果中的缺失技能频次排序，并保留关联岗位示例；不编造课程、认证、学习时长或就业结果。
@@ -305,7 +308,7 @@ python -m unittest discover -s tests -q
 python -m eval.run_evaluations --write-report
 ```
 
-当前验证结果为80项自动化测试通过、84/84项离线确定性评估通过。其中 SQL Guard 覆盖25类常见只读查询和24类危险或无效查询；其余评估覆盖规则路由、Text2SQL 规则兜底、通用 HTML 解析器、Skill 资产完整性和 MCP Tool/Resource 注册。详细结果见 [`eval/latest_report.md`](eval/latest_report.md)。该结果不代表线上数据完整性或 LLM 生成质量。
+当前验证结果为83项自动化测试通过、86/86项离线确定性评估通过。其中 SQL Guard 覆盖25类常见只读查询和24类危险或无效查询；其余评估覆盖规则路由、Text2SQL 规则兜底、通用 HTML 解析器、Skill 资产完整性和 MCP Tool/Resource/Prompt 注册。详细结果见 [`eval/latest_report.md`](eval/latest_report.md)。该结果不代表线上数据完整性或 LLM 生成质量。
 
 接口联调建议顺序：
 
@@ -327,7 +330,7 @@ MCP Inspector 验证：
 mcp dev backend\mcp_server.py:offerpilot_mcp
 ```
 
-在 Inspector 中依次检查 Resource `offerpilot://skills/catalog`，以及 `search_jobs`、`get_job_detail`、`get_job_requirements`、`list_skills` 和 `text2sql_query`。通过 FastAPI 联调时，Streamable HTTP 地址为：
+在 Inspector 中依次检查 Resource `offerpilot://skills/catalog`，Tools `search_jobs`、`get_job_detail`、`get_job_requirements`、`list_skills` 和 `text2sql_query`，以及 Prompts `job_interview_prompt` 和 `skill_gap_study_plan_prompt`。通过 FastAPI 联调时，Streamable HTTP 地址为：
 
 ```text
 http://127.0.0.1:8000/mcp/
@@ -360,10 +363,10 @@ Token 只能放在 `Authorization` Header，不要拼接到 URL。`mcp dev` 直�
 仍需完善：
 
 - 当前已有80项自动化测试和84项离线确定性评估，但尚未统计代码覆盖率，也未建立固定模型下的在线 LLM 评估基线。
-- MCP 当前暴露只读岗位工具和技能目录 Resource，尚未实现 Prompts。
+- MCP 当前暴露只读岗位工具、技能目录 Resource 和2个面向 Host 的 Prompt。
 - 远程 MCP 已有静态 Bearer Token 和单实例内存限流，但尚未实现标准 OAuth 2.1、scope 和多实例共享限流。
 - Skill Loader 已能发现7个本地 Skill，并约束允许工具和质量检查；Planner 的执行形状仍按 Skill 硬编码，尚未成为完全由 Skill 文件驱动的通用执行器。
-- `search_jobs` 当前返回完整岗位列表，尚未提供 MCP 分页和过滤参数，真实数据增长后会占用较多上下文。
+- `search_jobs` 已提供 MCP 分页、筛选和单次返回上限；后续可继续增加总数统计和更细粒度排序。
 - 部分采集正文仍含页面导航等噪声，部分岗位尚未完成技能与结构化要求抽取，数据质量需要持续治理。
 - 爬虫已具备应用层 SSRF 防护；生产环境仍应通过网络出口策略阻断内网和云元数据访问。
 - 部署环境尚未做生产级安全加固。
@@ -458,7 +461,7 @@ python -c "import secrets; print(secrets.token_urlsafe(48))"
 
 可以这样介绍项目：
 
-> OfferPilot MCP 是我做的 AI 求职管理工作台。它从公开岗位页面采集真实 JD，写入 MySQL 后进行技能和岗位要求抽取，再结合用户简历画像做岗位匹配和模拟面试。后端用 FastAPI 分层实现，并通过官方 MCP Streamable HTTP 暴露只读工具；Tool Registry、SQL Guard、Agent Trace 和工具调用日志负责工具治理、安全检查与可观测性。
+> OfferPilot Agent 是我做的 AI 求职管理与岗位分析 Agent 系统。它从公开岗位页面采集真实 JD，写入 MySQL 后进行技能和岗位要求抽取，再结合用户简历画像做岗位匹配和模拟面试。后端用 FastAPI 分层实现，内部通过 Router、Planner、Executor 和 Tool Registry 编排任务，对外通过官方 MCP Streamable HTTP 暴露只读工具、技能 Resource 和 Prompt；SQL Guard、Agent Trace 和工具调用日志负责安全检查与可观测性。
 
 需要避免这样说：
 
@@ -466,12 +469,12 @@ python -c "import secrets; print(secrets.token_urlsafe(48))"
 
 更稳妥的说法是：
 
-> 当前版本使用官方 MCP Python SDK，通过 Streamable HTTP 暴露5个只读岗位工具和1个技能目录 Resource，并复用现有 Tool Registry、SQL Guard 和工具日志。远程入口加入静态 Bearer Token、基础限流和审计；完整 OAuth 2.1、写操作工具和 Prompts 仍在后续范围内。
+> 当前版本使用官方 MCP Python SDK，通过 Streamable HTTP 暴露5个只读岗位工具、1个技能目录 Resource 和2个 Prompt，并复用现有 Tool Registry、SQL Guard 和工具日志。远程入口加入静态 Bearer Token、基础限流和审计；完整 OAuth 2.1、写操作工具和多租户 scope 仍在后续范围内。
 
 ## 下一步优先级
 
 1. 清洗采集正文中的导航噪声，并批量补齐真实岗位的技能和结构化要求。
-2. 为 `search_jobs` 增加过滤、分页和返回上限，控制 MCP 上下文体积。
-3. 固定模型与 Prompt 版本，建立路由、技能抽取、面试题和回答评价的在线 LLM 评估集。
+2. 固定模型与 Prompt 版本，建立路由、技能抽取、面试题和回答评价的在线 LLM 评估集。
+3. 在 MCP Inspector 或真实 Host 中验证 Prompt 调用流程，记录工具调用输入、输出和失败样例。
 4. 根据部署规模决定是否升级 OAuth 2.1、共享限流和更完整的可观测性。
-5. 再考虑新增 MCP Prompt，或进一步让 Skill 文件驱动通用 Planner。
+5. 继续让 Skill 文件驱动更通用的 Planner，减少按 Skill 硬编码的执行形状。

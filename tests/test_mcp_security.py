@@ -105,6 +105,55 @@ class McpToolAuditTests(unittest.TestCase):
             any(str(resource.uri) == "offerpilot://skills/catalog" for resource in resources)
         )
 
+    def test_mcp_prompts_are_advertised(self) -> None:
+        prompts = asyncio.run(mcp_server.offerpilot_mcp.list_prompts())
+        prompt_names = {prompt.name for prompt in prompts}
+
+        self.assertIn("job_interview_prompt", prompt_names)
+        self.assertIn("skill_gap_study_plan_prompt", prompt_names)
+
+    def test_search_jobs_passes_filters_and_pagination_to_registry(self) -> None:
+        with patch(
+            "backend.mcp_server.registry.call_tool",
+            return_value={
+                "result": {
+                    "jobs": [],
+                    "returned": 0,
+                    "limit": 25,
+                    "offset": 50,
+                    "has_more": False,
+                    "filters": {"city": "上海"},
+                }
+            },
+        ) as call_tool:
+            result = mcp_server.search_jobs(
+                keyword="Agent",
+                city="上海",
+                job_type="实习",
+                skill="RAG",
+                extraction_status="completed",
+                limit=25,
+                offset=50,
+            )
+
+        self.assertEqual(result["limit"], 25)
+        self.assertEqual(
+            call_tool.call_args.args,
+            (
+                "search_jobs",
+                {
+                    "keyword": "Agent",
+                    "city": "上海",
+                    "job_type": "实习",
+                    "skill": "RAG",
+                    "extraction_status": "completed",
+                    "limit": 25,
+                    "offset": 50,
+                },
+            ),
+        )
+        self.assertEqual(call_tool.call_args.kwargs["user_id"], "mcp")
+
     def test_job_detail_tools_call_registry_as_mcp_user(self) -> None:
         with patch(
             "backend.mcp_server.registry.call_tool",

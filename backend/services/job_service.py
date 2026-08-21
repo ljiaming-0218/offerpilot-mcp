@@ -18,8 +18,38 @@ def create_job(payload: JobCreate) -> dict:
     return job_repository.create_job(data)
 
 
-def list_jobs() -> list[dict]:
-    return job_repository.list_jobs()
+def list_jobs(
+    keyword: str | None = None,
+    city: str | None = None,
+    job_type: str | None = None,
+    skill: str | None = None,
+    extraction_status: str | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+) -> list[dict]:
+    filters = {
+        "keyword": keyword,
+        "city": city,
+        "job_type": job_type,
+        "skill": skill,
+        "extraction_status": extraction_status,
+    }
+    normalized_filters = {
+        key: value.strip()
+        for key, value in filters.items()
+        if isinstance(value, str) and value.strip()
+    }
+    if normalized_filters.get("extraction_status") not in {None, "completed", "skills_only", "pending"}:
+        normalized_filters.pop("extraction_status", None)
+
+    normalized_limit = limit if isinstance(limit, int) and limit > 0 else None
+    normalized_offset = offset if isinstance(offset, int) and offset > 0 else 0
+
+    return job_repository.list_jobs(
+        filters=normalized_filters,
+        limit=normalized_limit,
+        offset=normalized_offset,
+    )
 
 
 def get_job(job_id: int) -> dict:

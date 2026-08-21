@@ -1,7 +1,9 @@
 import json
 import unittest
+from unittest.mock import patch
 
 from backend.repositories.job_repository import _build_job_list_item
+from backend.tools import job_tools
 
 
 class JobListPresentationTests(unittest.TestCase):
@@ -40,6 +42,42 @@ class JobListPresentationTests(unittest.TestCase):
         self.assertEqual(result["extraction_status"], "pending")
         self.assertEqual(result["skill_names"], [])
         self.assertEqual(result["requirement_highlights"], [])
+
+    def test_search_jobs_tool_clamps_context_size_and_returns_page_metadata(self) -> None:
+        rows = [{"job_id": index} for index in range(1, 52)]
+
+        with patch(
+            "backend.tools.job_tools.job_service.list_jobs",
+            return_value=rows,
+        ) as list_jobs:
+            result = job_tools.search_jobs(
+                {
+                    "keyword": " Agent ",
+                    "city": " 北京 ",
+                    "skill": "RAG",
+                    "extraction_status": "completed",
+                    "limit": 500,
+                    "offset": -10,
+                }
+            )
+
+        self.assertEqual(result["limit"], 50)
+        self.assertEqual(result["offset"], 0)
+        self.assertTrue(result["has_more"])
+        self.assertEqual(result["returned"], 50)
+        self.assertEqual(result["jobs"][0]["job_id"], 1)
+        self.assertEqual(result["filters"]["keyword"], "Agent")
+        self.assertEqual(
+            list_jobs.call_args.kwargs,
+            {
+                "keyword": "Agent",
+                "city": "北京",
+                "skill": "RAG",
+                "extraction_status": "completed",
+                "limit": 51,
+                "offset": 0,
+            },
+        )
 
 
 if __name__ == "__main__":

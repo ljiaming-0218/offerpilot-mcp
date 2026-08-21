@@ -45,11 +45,86 @@ def create_job(payload: dict[str, Any]) -> dict[str, Any]:
         return created_job
 
 
-def list_jobs() -> list[dict[str, Any]]:
+def list_jobs(
+    filters: dict[str, str] | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+) -> list[dict[str, Any]]:
+    filters = filters or {}
+    where_parts: list[str] = []
+    params: dict[str, Any] = {}
+
+    keyword = filters.get("keyword")
+    if keyword:
+        where_parts.append(
+            """
+            (
+                j.title LIKE :keyword
+                OR c.company_name LIKE :keyword
+                OR j.description LIKE :keyword
+            )
+            """
+        )
+        params["keyword"] = f"%{keyword}%"
+
+    city = filters.get("city")
+    if city:
+        where_parts.append("j.city LIKE :city")
+        params["city"] = f"%{city}%"
+
+    job_type = filters.get("job_type")
+    if job_type:
+        where_parts.append("j.job_type LIKE :job_type")
+        params["job_type"] = f"%{job_type}%"
+
+    skill = filters.get("skill")
+    if skill:
+        where_parts.append(
+            """
+            EXISTS (
+                SELECT 1
+                FROM job_skills js_filter
+                JOIN skills s_filter ON s_filter.skill_id = js_filter.skill_id
+                WHERE js_filter.job_id = j.job_id
+                  AND s_filter.skill_name LIKE :skill
+            )
+            """
+        )
+        params["skill"] = f"%{skill}%"
+
+    extraction_status = filters.get("extraction_status")
+    if extraction_status == "completed":
+        where_parts.append("(j.requirement_json IS NOT NULL AND j.requirement_json <> '')")
+    elif extraction_status == "skills_only":
+        where_parts.append(
+            """
+            (
+                (j.requirement_json IS NULL OR j.requirement_json = '')
+                AND COALESCE(skill_summary.skill_count, 0) > 0
+            )
+            """
+        )
+    elif extraction_status == "pending":
+        where_parts.append(
+            """
+            (
+                (j.requirement_json IS NULL OR j.requirement_json = '')
+                AND COALESCE(skill_summary.skill_count, 0) = 0
+            )
+            """
+        )
+
+    where_sql = f"WHERE {' AND '.join(where_parts)}" if where_parts else ""
+    paging_sql = ""
+    if limit is not None:
+        paging_sql = "LIMIT :limit OFFSET :offset"
+        params["limit"] = limit
+        params["offset"] = offset
+
     with engine.connect() as connection:
         rows = connection.execute(
             text(
-                """
+                f"""
                 SELECT
                     j.job_id,
                     j.company_id,
@@ -78,9 +153,12 @@ def list_jobs() -> list[dict[str, Any]]:
                     JOIN skills s ON s.skill_id = js.skill_id
                     GROUP BY js.job_id
                 ) skill_summary ON skill_summary.job_id = j.job_id
+                {where_sql}
                 ORDER BY j.created_at DESC, j.job_id DESC
+                {paging_sql}
                 """
-            )
+            ),
+            params,
         ).mappings().all()
 
     return [_build_job_list_item(dict(row)) for row in rows]
